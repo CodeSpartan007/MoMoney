@@ -14,7 +14,8 @@ import androidx.room.PrimaryKey
             childColumns = ["category_id"],
             onDelete = ForeignKey.SET_NULL
         )
-    ]
+    ],
+            indices = [androidx.room.Index(value = ["category_id"])]
 )
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true)
