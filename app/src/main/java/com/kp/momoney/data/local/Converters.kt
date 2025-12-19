@@ -4,24 +4,25 @@ import androidx.room.TypeConverter
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.Date
 
 class Converters {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
     }
-    
+
     // Date <-> Long converters
     @TypeConverter
-    fun fromTimestamp(value: Long?): Long? {
-        return value
+    fun fromTimestamp(value: Long?): Date? {
+        return value?.let { Date(it) }
     }
-    
+
     @TypeConverter
-    fun dateToTimestamp(date: Long?): Long? {
-        return date
+    fun dateToTimestamp(date: Date?): Long? {
+        return date?.time
     }
-    
+
     // List<String> <-> String converters (using JSON)
     @TypeConverter
     fun fromTagsString(value: String?): List<String>? {
@@ -35,7 +36,7 @@ class Converters {
             value.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         }
     }
-    
+
     @TypeConverter
     fun tagsListToString(tags: List<String>?): String? {
         return if (tags.isNullOrEmpty()) {
