@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "410515666298",
+    "project_id": "momoney-3596c",
+    "storage_bucket": "momoney-3596c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:410515666298:android:1697433f6b14071d68d2c3",
+        "android_client_info": {
+          "package_name": "com.kp.momoney"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLcu7oORT3S_y7akskmUFuTticmxp6R-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
