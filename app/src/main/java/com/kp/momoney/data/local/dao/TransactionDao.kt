@@ -5,15 +5,17 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.kp.momoney.data.local.entity.TransactionEntity
+import com.kp.momoney.data.local.entity.TransactionWithCategory
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TransactionDao {
-    
+    @Transaction
     @Query("SELECT * FROM transactions ORDER BY date DESC")
-    fun getAllTransactions(): Flow<List<TransactionEntity>>
+    fun getAllTransactions(): Flow<List<TransactionWithCategory>>
     
     @Query("SELECT * FROM transactions WHERE id = :transactionId")
     suspend fun getTransactionById(transactionId: Long): TransactionEntity?
