@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,11 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.kp.momoney.domain.model.Transaction
-import com.kp.momoney.presentation.navigation.Screen
+import com.kp.momoney.presentation.navigation.Screen // Ensure this import is correct for your project
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -50,7 +52,8 @@ fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState = viewModel.uiState.value
+    // FIX: Use collectAsState() to listen for real-time updates
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -59,7 +62,8 @@ fun HomeScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            navController.navigate(Screen.Budget.route)
+                            // Ensure "budget" matches your Screen route definition
+                            navController.navigate("budget")
                         }
                     ) {
                         Text("Budget")
@@ -70,7 +74,8 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    navController.navigate(Screen.AddTransaction.route)
+                    // Ensure "add_transaction" matches your Screen route definition
+                    navController.navigate("add_transaction")
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -81,44 +86,54 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                TotalBalanceCard(
-                    totalIncome = uiState.totalIncome,
-                    totalExpense = uiState.totalExpense
-                )
-            }
 
-            if (uiState.transactions.isEmpty()) {
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No transactions yet.\nTap + to add your first transaction!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    TotalBalanceCard(
+                        totalIncome = uiState.totalIncome,
+                        totalExpense = uiState.totalExpense
+                    )
                 }
-            } else {
-                items(uiState.transactions) { transaction ->
-                    TransactionItem(transaction = transaction)
+
+                if (uiState.transactions.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No transactions yet.\nTap + to add your first transaction!",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    items(uiState.transactions) { transaction ->
+                        TransactionItem(transaction = transaction)
+                    }
                 }
             }
         }
     }
 }
+
+// ... Keep your TotalBalanceCard and TransactionItem functions exactly as they were ...
+// (I have omitted them here to save space, but you should keep them in the file)
 
 @Composable
 fun TotalBalanceCard(
@@ -231,7 +246,7 @@ fun TransactionItem(transaction: Transaction) {
                 } catch (e: Exception) {
                     MaterialTheme.colorScheme.primary
                 }
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -289,4 +304,3 @@ private fun formatDate(date: java.util.Date): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     return sdf.format(date)
 }
-

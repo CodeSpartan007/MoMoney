@@ -5,17 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 data class HomeUiState(
     val transactions: List<Transaction> = emptyList(),
     val totalIncome: Double = 0.0,
-    val totalExpense: Double = 0.0
+    val totalExpense: Double = 0.0,
+    val isLoading: Boolean = true // Added loading state just in case
 )
 
 @HiltViewModel
@@ -23,36 +24,32 @@ class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    // TRANSFORMING THE FLOW DIRECTLY
+    val uiState: StateFlow<HomeUiState> = transactionRepository.getAllTransactions()
+        .map { transactions ->
+            val income = transactions
+                .filter { it.type.equals("Income", ignoreCase = true) }
+                .sumOf { it.amount }
 
-    init {
-        collectTransactions()
-    }
+            val expense = transactions
+                .filter { it.type.equals("Expense", ignoreCase = true) }
+                .sumOf { it.amount }
 
-    private fun collectTransactions() {
-        viewModelScope.launch {
-            transactionRepository.getAllTransactions()
-                .catch { exception ->
-                    // Handle error - could emit error state
-                    exception.printStackTrace()
-                }
-                .collect { transactions ->
-                    val income = transactions
-                        .filter { it.type.equals("Income", ignoreCase = true) }
-                        .sumOf { it.amount }
-                    
-                    val expense = transactions
-                        .filter { it.type.equals("Expense", ignoreCase = true) }
-                        .sumOf { it.amount }
-                    
-                    _uiState.value = HomeUiState(
-                        transactions = transactions,
-                        totalIncome = income,
-                        totalExpense = expense
-                    )
-                }
+            HomeUiState(
+                transactions = transactions,
+                totalIncome = income,
+                totalExpense = expense,
+                isLoading = false
+            )
         }
-    }
+        .catch { exception ->
+            exception.printStackTrace()
+            // In a real app, you'd emit an error state here
+            emit(HomeUiState(isLoading = false))
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000), // <--- THE MAGIC FIX
+            initialValue = HomeUiState(isLoading = true)
+        )
 }
-
