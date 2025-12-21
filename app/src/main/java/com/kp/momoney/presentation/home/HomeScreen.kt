@@ -25,6 +25,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +44,7 @@ import com.kp.momoney.presentation.navigation.Screen
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -49,6 +53,20 @@ fun HomeScreen(
     val uiState = viewModel.uiState.value
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("MoMoney") },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            navController.navigate(Screen.Budget.route)
+                        }
+                    ) {
+                        Text("Budget")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {

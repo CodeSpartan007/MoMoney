@@ -1,7 +1,9 @@
 package com.kp.momoney.di
 
+import com.kp.momoney.data.repository.BudgetRepositoryImpl
 import com.kp.momoney.data.repository.CategoryRepositoryImpl
 import com.kp.momoney.data.repository.TransactionRepositoryImpl
+import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.Binds
@@ -25,5 +27,11 @@ abstract class RepositoryModule {
     abstract fun bindCategoryRepository(
         impl: CategoryRepositoryImpl
     ): CategoryRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindBudgetRepository(
+        impl: BudgetRepositoryImpl
+    ): BudgetRepository
 }
 

@@ -68,7 +68,7 @@ fun AddTransactionScreen(
                 title = { Text("New Transaction") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        // Uses standard icon (Valid in all versions)
+                        // FIX 1: Use standard ArrowBack (works on all versions)
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -113,6 +113,8 @@ fun AddTransactionScreen(
                     expanded = isCategoryExpanded,
                     onExpandedChange = { isCategoryExpanded = !isCategoryExpanded }
                 ) {
+                    // FIX 2: Suppress the deprecation warning so it builds cleanly
+                    @Suppress("DEPRECATION")
                     OutlinedTextField(
                         value = selectedCategory?.name ?: "",
                         onValueChange = {},
@@ -123,7 +125,7 @@ fun AddTransactionScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            // Uses standard menuAnchor (Valid in all versions)
+                            // FIX 3: Use the older .menuAnchor() with no arguments
                             .menuAnchor()
                     )
 

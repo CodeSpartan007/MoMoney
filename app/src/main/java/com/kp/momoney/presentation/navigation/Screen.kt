@@ -6,6 +6,7 @@ package com.kp.momoney.presentation.navigation
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object AddTransaction : Screen("add_transaction")
+    object Budget : Screen("budget")
     object Reports : Screen("reports")
     object Settings : Screen("settings")
 }

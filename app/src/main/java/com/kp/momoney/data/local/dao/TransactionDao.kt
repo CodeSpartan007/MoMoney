@@ -9,6 +9,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.kp.momoney.data.local.entity.TransactionEntity
 import com.kp.momoney.data.local.entity.TransactionWithCategory
+import com.kp.momoney.data.local.model.CategorySpending
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -40,5 +41,8 @@ interface TransactionDao {
     
     @Query("DELETE FROM transactions WHERE id = :transactionId")
     suspend fun deleteTransactionById(transactionId: Long)
+    
+    @Query("SELECT category_id as categoryId, SUM(amount) as total FROM transactions WHERE date BETWEEN :startDate AND :endDate AND type = 'Expense' AND category_id IS NOT NULL GROUP BY category_id")
+    fun getCategorySpendingByDateRange(startDate: Long, endDate: Long): Flow<List<CategorySpending>>
 }
 
