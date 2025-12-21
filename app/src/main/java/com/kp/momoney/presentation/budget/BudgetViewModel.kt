@@ -8,11 +8,7 @@ import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,33 +17,35 @@ class BudgetViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository
 ) : ViewModel() {
-    
-    private val _uiState = MutableStateFlow(BudgetUiState())
-    val uiState: StateFlow<BudgetUiState> = _uiState.asStateFlow()
-    
-    init {
-        loadBudgets()
-    }
-    
-    private fun loadBudgets() {
-        transactionRepository.getBudgetsWithSpending()
-            .onEach { budgets ->
-                _uiState.value = _uiState.value.copy(
-                    budgets = budgets,
-                    isLoading = false
-                )
-            }
-            .launchIn(viewModelScope)
-    }
-    
+
+    // FIX 1: Use stateIn to automatically manage the connection to the repository.
+    // This ensures that as soon as the UI subscribes, the DB is queried.
+    val uiState: StateFlow<BudgetUiState> = transactionRepository.getBudgetsWithSpending()
+        .map { budgets ->
+            BudgetUiState(
+                budgets = budgets,
+                isLoading = false,
+                error = null
+            )
+        }
+        .catch { e ->
+            emit(BudgetUiState(isLoading = false, error = e.message ?: "Failed to load budgets"))
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000), // Keeps data alive for 5s during rotation
+            initialValue = BudgetUiState(isLoading = true)
+        )
+
     fun updateBudgetLimit(categoryId: Int, limitAmount: Double) {
         viewModelScope.launch {
             try {
+                // Your existing logic is perfect here
                 val startDate = DateUtils.getCurrentMonthStart()
                 val endDate = DateUtils.getCurrentMonthEnd()
-                
+
                 val existingBudget = budgetRepository.getBudgetForCategory(categoryId)
-                
+
                 val budget = if (existingBudget != null) {
                     existingBudget.copy(limitAmount = limitAmount)
                 } else {
@@ -58,18 +56,14 @@ class BudgetViewModel @Inject constructor(
                         endDate = endDate
                     )
                 }
-                
+
                 budgetRepository.upsertBudget(budget)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Failed to update budget"
-                )
+                // Since uiState is now a ReadOnly flow from the DB, we can't manually set the error state easily.
+                // For now, we just log it or you could use a separate "event" flow for toast messages.
+                e.printStackTrace()
             }
         }
-    }
-    
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
     }
 }
 
@@ -78,4 +72,3 @@ data class BudgetUiState(
     val isLoading: Boolean = true,
     val error: String? = null
 )
-

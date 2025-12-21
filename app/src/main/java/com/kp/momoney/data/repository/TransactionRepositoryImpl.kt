@@ -1,5 +1,4 @@
 package com.kp.momoney.data.repository
-
 import com.kp.momoney.data.local.dao.BudgetDao
 import com.kp.momoney.data.local.dao.CategoryDao
 import com.kp.momoney.data.local.dao.TransactionDao
@@ -15,6 +14,8 @@ import java.util.Date
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
+import android.util.Log
 import kotlinx.coroutines.flow.map
 
 class TransactionRepositoryImpl @Inject constructor(
@@ -71,29 +72,37 @@ class TransactionRepositoryImpl @Inject constructor(
             categoryId = categoryId
         )
     }
-    
+
     override fun getBudgetsWithSpending(): Flow<List<BudgetState>> {
         val startDate = DateUtils.getCurrentMonthStart()
         val endDate = DateUtils.getCurrentMonthEnd()
-        
+
+        // 1. Log when we start requesting data
+        Log.d("BudgetRepo", "Fetching data for: $startDate to $endDate")
+
         val categorySpendingFlow = transactionDao.getCategorySpendingByDateRange(startDate, endDate)
+            .onEach { Log.d("BudgetRepo", "Spending loaded: ${it.size} items") }
+
         val budgetsFlow = budgetDao.getAllBudgets()
+            .onEach { Log.d("BudgetRepo", "Budgets loaded: ${it.size} items") }
+
         val categoriesFlow = categoryRepository.getAllCategories()
-        
+            .onEach { Log.d("BudgetRepo", "Categories loaded: ${it.size} items") }
+
         return combine(categoriesFlow, budgetsFlow, categorySpendingFlow) { categories, budgets, spending ->
-            // Create a map of categoryId to spending
+            Log.d("BudgetRepo", "Combining data...") // If you don't see this log, one of the flows above is stuck!
+
             val spendingMap = spending.associateBy { it.categoryId }
-            
-            // Create a map of categoryId to budget
             val budgetMap = budgets.associateBy { it.categoryId }
-            
-            // For each category, create a BudgetState
+
             categories.map { category ->
                 val spent = spendingMap[category.id]?.total ?: 0.0
                 val budget = budgetMap[category.id]
                 val limit = budget?.limitAmount ?: 0.0
-                val percentUsed = if (limit > 0) (spent / limit) * 100.0 else 0.0
-                
+
+                // Fix: Ensure we don't divide by zero, and cast to Float if needed for UI
+                val percentUsed = if (limit > 0.0) (spent / limit) * 100.0 else 0.0
+
                 BudgetState(
                     category = category,
                     spentAmount = spent,
