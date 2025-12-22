@@ -92,10 +92,13 @@ class TransactionRepositoryImpl @Inject constructor(
         return combine(categoriesFlow, budgetsFlow, categorySpendingFlow) { categories, budgets, spending ->
             Log.d("BudgetRepo", "Combining data...") // If you don't see this log, one of the flows above is stuck!
 
+            // Only budgets for expense categories should be shown
+            val expenseCategories = categories.filter { it.type.equals("Expense", ignoreCase = true) }
+
             val spendingMap = spending.associateBy { it.categoryId }
             val budgetMap = budgets.associateBy { it.categoryId }
 
-            categories.map { category ->
+            expenseCategories.map { category ->
                 val spent = spendingMap[category.id]?.total ?: 0.0
                 val budget = budgetMap[category.id]
                 val limit = budget?.limitAmount ?: 0.0
