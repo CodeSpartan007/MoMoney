@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -34,53 +37,76 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val navController = rememberNavController()
-                    androidx.compose.material3.Scaffold(
-                        bottomBar = {
-                            NavigationBar {
-                                val destinations = listOf(
-                                    Screen.Home to Pair("Home", Icons.Filled.Home),
-                                    Screen.Budget to Pair("Budget", Icons.Filled.Add),
-                                    Screen.Reports to Pair("Reports", Icons.Filled.Add)
-                                )
+                    MainScreen()
+                }
+            }
+        }
+    }
+}
 
-                                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                                val currentRoute = navBackStackEntry?.destination?.route
+@Composable
+private fun MainScreen() {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-                                destinations.forEach { (screen, labelIcon) ->
-                                    NavigationBarItem(
-                                        selected = currentRoute == screen.route,
-                                        onClick = {
-                                            if (currentRoute != screen.route) {
-                                                navController.navigate(screen.route) {
-                                                    popUpTo(Screen.Home.route) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            }
-                                        },
-                                        icon = {
-                                            Icon(
-                                                imageVector = labelIcon.second,
-                                                contentDescription = labelIcon.first
-                                            )
-                                        },
-                                        label = {
-                                            Text(text = labelIcon.first)
+    Scaffold(
+        floatingActionButton = {
+            if (currentRoute == Screen.Home.route) {
+                FloatingActionButton(
+                    onClick = {
+                        navController.navigate(Screen.AddTransaction.route)
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Transaction"
+                    )
+                }
+            }
+        },
+        bottomBar = {
+            if (currentRoute != Screen.AddTransaction.route) {
+                NavigationBar {
+                    val destinations = listOf(
+                        Screen.Home to Pair("Home", Icons.Filled.Home),
+                        Screen.Budget to Pair("Budget", Icons.Filled.Home),
+                        Screen.Reports to Pair("Reports", Icons.Filled.Home)
+                    )
+
+                    destinations.forEach { (screen, labelIcon) ->
+                        NavigationBarItem(
+                            selected = currentRoute == screen.route,
+                            onClick = {
+                                if (currentRoute != screen.route) {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(Screen.Home.route) {
+                                            saveState = true
                                         }
-                                    )
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = labelIcon.second,
+                                    contentDescription = labelIcon.first
+                                )
+                            },
+                            label = {
+                                Text(text = labelIcon.first)
                             }
-                        }
-                    ) { paddingValues ->
-                        AppNavHost(
-                            navController = navController
                         )
                     }
                 }
             }
         }
+    ) { innerPadding ->
+        AppNavHost(
+            navController = navController,
+            innerPadding = innerPadding
+        )
     }
 }
