@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.SET_NULL
         )
     ],
-            indices = [androidx.room.Index(value = ["category_id"])]
+    indices = [
+        androidx.room.Index(value = ["category_id"]),
+        androidx.room.Index(value = ["firestore_id"], unique = true)
+    ]
 )
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true)
@@ -41,6 +44,9 @@ data class TransactionEntity(
     val tags: String?, // JSON string or comma-separated values
     
     @ColumnInfo(name = "category_id")
-    val categoryId: Int?
+    val categoryId: Int?,
+    
+    @ColumnInfo(name = "firestore_id")
+    val firestoreId: String? = null // Firestore document ID
 )
 

@@ -16,7 +16,7 @@ import com.kp.momoney.data.local.entity.TransactionEntity
         TransactionEntity::class,
         BudgetEntity::class
     ],
-    version = 1,
+    version = 2, // Incremented to add firestoreId column
     exportSchema = false
 )
 @TypeConverters(Converters::class)

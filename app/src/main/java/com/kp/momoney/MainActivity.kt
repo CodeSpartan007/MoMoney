@@ -18,10 +18,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import com.kp.momoney.presentation.navigation.AppNavHost
 import com.kp.momoney.presentation.navigation.Screen
 import com.kp.momoney.ui.theme.MoMoneyTheme
@@ -49,10 +52,14 @@ private fun MainScreen() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val startDestination = remember {
+        if (Firebase.auth.currentUser == null) Screen.Login.route else Screen.Home.route
+    }
+    val isAuthRoute = currentRoute == Screen.Login.route || currentRoute == Screen.Register.route
 
     Scaffold(
         floatingActionButton = {
-            if (currentRoute == Screen.Home.route) {
+            if (!isAuthRoute && currentRoute == Screen.Home.route) {
                 FloatingActionButton(
                     onClick = {
                         navController.navigate(Screen.AddTransaction.route)
@@ -67,7 +74,7 @@ private fun MainScreen() {
             }
         },
         bottomBar = {
-            if (currentRoute != Screen.AddTransaction.route) {
+            if (!isAuthRoute && currentRoute != Screen.AddTransaction.route) {
                 NavigationBar {
                     val destinations = listOf(
                         Screen.Home to Pair("Home", Icons.Filled.Home),
@@ -106,7 +113,8 @@ private fun MainScreen() {
     ) { innerPadding ->
         AppNavHost(
             navController = navController,
-            innerPadding = innerPadding
+            innerPadding = innerPadding,
+            startDestination = startDestination
         )
     }
 }

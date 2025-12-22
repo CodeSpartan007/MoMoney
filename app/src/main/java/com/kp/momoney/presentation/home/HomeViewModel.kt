@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -23,6 +24,18 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository
 ) : ViewModel() {
+
+    init {
+        // Sync transactions from Firestore when ViewModel is created
+        viewModelScope.launch {
+            try {
+                transactionRepository.syncTransactions()
+            } catch (e: Exception) {
+                // Log error but don't crash - app can work offline
+                e.printStackTrace()
+            }
+        }
+    }
 
     // TRANSFORMING THE FLOW DIRECTLY
     val uiState: StateFlow<HomeUiState> = transactionRepository.getAllTransactions()

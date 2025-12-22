@@ -21,6 +21,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :transactionId")
     suspend fun getTransactionById(transactionId: Long): TransactionEntity?
     
+    @Query("SELECT * FROM transactions WHERE firestore_id = :firestoreId")
+    suspend fun getTransactionByFirestoreId(firestoreId: String): TransactionEntity?
+    
     @Query("SELECT * FROM transactions WHERE date >= :startDate AND date <= :endDate ORDER BY date DESC")
     fun getTransactionsByDateRange(startDate: Long, endDate: Long): Flow<List<TransactionEntity>>
     
