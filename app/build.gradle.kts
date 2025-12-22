@@ -84,6 +84,10 @@ dependencies {
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.json)
     
+    // Vico Charts
+    implementation(libs.vico.compose.m3)
+    implementation(libs.vico.core)
+    
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
