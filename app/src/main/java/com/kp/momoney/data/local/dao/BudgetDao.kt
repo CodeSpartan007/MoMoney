@@ -24,6 +24,9 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets WHERE id = :budgetId")
     suspend fun getBudgetById(budgetId: Long): BudgetEntity?
     
+    @Query("SELECT * FROM budgets WHERE firestore_id = :firestoreId")
+    suspend fun getBudgetByFirestoreId(firestoreId: String): BudgetEntity?
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: BudgetEntity): Long
     

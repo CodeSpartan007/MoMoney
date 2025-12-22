@@ -3,6 +3,7 @@ package com.kp.momoney.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Transaction
+import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,14 +23,17 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val budgetRepository: BudgetRepository
 ) : ViewModel() {
 
     init {
-        // Sync transactions from Firestore when ViewModel is created
+        // Sync data from Firestore when ViewModel is created
         viewModelScope.launch {
             try {
+                // Sync transactions first, then budgets
                 transactionRepository.syncTransactions()
+                budgetRepository.syncBudgets()
             } catch (e: Exception) {
                 // Log error but don't crash - app can work offline
                 e.printStackTrace()

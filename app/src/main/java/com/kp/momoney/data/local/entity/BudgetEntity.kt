@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-            indices = [androidx.room.Index(value = ["category_id"])]
+    indices = [
+        androidx.room.Index(value = ["category_id"]),
+        androidx.room.Index(value = ["firestore_id"], unique = true)
+    ]
 )
 data class BudgetEntity(
     @PrimaryKey(autoGenerate = true)
@@ -32,6 +35,9 @@ data class BudgetEntity(
     val startDate: Long, // Timestamp in milliseconds
     
     @ColumnInfo(name = "end_date")
-    val endDate: Long // Timestamp in milliseconds
+    val endDate: Long, // Timestamp in milliseconds
+    
+    @ColumnInfo(name = "firestore_id")
+    val firestoreId: String? = null // Firestore document ID
 )
 
