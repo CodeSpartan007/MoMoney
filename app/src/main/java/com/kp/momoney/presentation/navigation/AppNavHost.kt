@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import com.kp.momoney.presentation.add_transaction.AddTransactionScreen
 import com.kp.momoney.presentation.budget.BudgetScreen
 import com.kp.momoney.presentation.home.HomeScreen
+import com.kp.momoney.presentation.reports.ReportsScreen
 
 @Composable
 fun AppNavHost(
@@ -29,6 +30,10 @@ fun AppNavHost(
         
         composable(Screen.Budget.route) {
             BudgetScreen()
+        }
+        
+        composable(Screen.Reports.route) {
+            ReportsScreen()
         }
     }
 }
