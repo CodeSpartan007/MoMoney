@@ -15,6 +15,7 @@ import com.kp.momoney.presentation.add_transaction.AddTransactionScreen
 import com.kp.momoney.presentation.budget.BudgetScreen
 import com.kp.momoney.presentation.home.HomeScreen
 import com.kp.momoney.presentation.reports.ReportsScreen
+import com.kp.momoney.presentation.settings.SettingsScreen
 
 @Composable
 fun AppNavHost(
@@ -62,7 +63,11 @@ fun AppNavHost(
         }
 
         composable(Screen.Home.route) {
-            HomeScreen()
+            HomeScreen(
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                }
+            )
         }
         
         composable(Screen.AddTransaction.route) {
@@ -77,6 +82,16 @@ fun AppNavHost(
         
         composable(Screen.Reports.route) {
             ReportsScreen()
+        }
+        
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }
