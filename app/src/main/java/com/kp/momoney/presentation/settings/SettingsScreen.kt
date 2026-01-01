@@ -1,5 +1,8 @@
 package com.kp.momoney.presentation.settings
 
+import android.app.ActivityManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,34 +22,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onLogout: () -> Unit,
-    onNavigateBack: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel()
+    onNavigateBack: () -> Unit = {}
 ) {
-    val userEmail = viewModel.userEmail
-    val event by viewModel.event.collectAsState()
-
-    LaunchedEffect(event) {
-        when (event) {
-            is SettingsEvent.MapsToLogin -> {
-                viewModel.clearEvent()
-                onLogout()
-            }
-            null -> {}
-        }
-    }
+    val context = LocalContext.current
+    val userEmail = FirebaseAuth.getInstance().currentUser?.email ?: ""
 
     Scaffold(
         topBar = {
@@ -91,7 +80,17 @@ fun SettingsScreen(
 
             // Sign Out Button
             Button(
-                onClick = { viewModel.logout() },
+                onClick = {
+                    // Sign out of Firebase first
+                    FirebaseAuth.getInstance().signOut()
+                    
+                    // Show toast to inform user
+                    Toast.makeText(context, "Logging out and resetting...", Toast.LENGTH_SHORT).show()
+                    
+                    // Nuclear option: Clear all app data (this will kill the app)
+                    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                    am.clearApplicationUserData()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 48.dp),

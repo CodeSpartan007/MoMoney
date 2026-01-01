@@ -86,11 +86,6 @@ fun AppNavHost(
         
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onLogout = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
