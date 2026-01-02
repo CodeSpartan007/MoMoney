@@ -22,6 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.domain.model.BudgetState
 import java.text.NumberFormat
 import java.util.Locale
+import com.kp.momoney.util.toCurrency
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,7 +130,7 @@ fun BudgetScreen(
                         label = { Text("Budget Limit") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        prefix = { Text("$") }
+                        prefix = { Text("Ksh ") }
                     )
                 }
             },
@@ -214,7 +216,7 @@ fun BudgetItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${formatCurrency(budget.spentAmount)} / ${formatCurrency(budget.limitAmount)}",
+                            text = "${budget.spentAmount.toCurrency()} / ${budget.limitAmount.toCurrency()}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -260,9 +262,9 @@ fun BudgetItem(
                     val remaining = budget.limitAmount - budget.spentAmount
                     Text(
                         text = if (remaining >= 0) {
-                            "${formatCurrency(remaining)} remaining"
+                            "${remaining.toCurrency()} remaining"
                         } else {
-                            "${formatCurrency(-remaining)} over budget"
+                            "${(-remaining).toCurrency()} over budget"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (remaining >= 0) {
@@ -276,9 +278,4 @@ fun BudgetItem(
             }
         }
     }
-}
-
-private fun formatCurrency(amount: Double): String {
-    val formatter = NumberFormat.getCurrencyInstance(Locale.getDefault())
-    return formatter.format(amount)
 }

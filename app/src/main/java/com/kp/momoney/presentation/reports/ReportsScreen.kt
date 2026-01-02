@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.presentation.reports.components.IncomeExpenseBarChart
 import com.kp.momoney.presentation.reports.components.DailyTrendChart
+import com.kp.momoney.util.toCurrency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -281,7 +282,7 @@ private fun CategoryLegendRow(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "$${"%.2f".format(item.totalAmount)}",
+                text = item.totalAmount.toCurrency(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

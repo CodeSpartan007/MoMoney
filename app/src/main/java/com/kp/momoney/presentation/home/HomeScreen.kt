@@ -42,6 +42,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.domain.model.Transaction
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.kp.momoney.util.toCurrency
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,7 +151,7 @@ fun TotalBalanceCard(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "$${String.format("%.2f", balance)}",
+                text = balance.toCurrency(),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = balanceColor
@@ -166,7 +168,7 @@ fun TotalBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "$${String.format("%.2f", totalIncome)}",
+                        text = totalIncome.toCurrency(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF4CAF50)
@@ -179,7 +181,7 @@ fun TotalBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "$${String.format("%.2f", totalExpense)}",
+                        text = totalExpense.toCurrency(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFFF44336)
@@ -270,7 +272,7 @@ fun TransactionItem(transaction: Transaction) {
 
             // Amount
             Text(
-                text = "$amountPrefix$${String.format("%.2f", transaction.amount)}",
+                text = "$amountPrefix${transaction.amount.toCurrency()}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = amountColor

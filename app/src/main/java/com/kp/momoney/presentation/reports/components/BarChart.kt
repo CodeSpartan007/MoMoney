@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kp.momoney.util.toCurrency
 
 @Composable
 fun IncomeExpenseBarChart(
@@ -92,7 +93,7 @@ fun IncomeExpenseBarChart(
                 // Income value label
                 if (income > 0) {
                     Text(
-                        text = "$${"%.2f".format(income)}",
+                        text = income.toCurrency(),
                         style = MaterialTheme.typography.bodySmall,
                         color = textColor,
                         modifier = Modifier
@@ -104,7 +105,7 @@ fun IncomeExpenseBarChart(
                 // Expense value label
                 if (expense > 0) {
                     Text(
-                        text = "$${"%.2f".format(expense)}",
+                        text = expense.toCurrency(),
                         style = MaterialTheme.typography.bodySmall,
                         color = textColor,
                         modifier = Modifier
