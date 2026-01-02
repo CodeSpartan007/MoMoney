@@ -75,7 +75,7 @@ fun ReportsScreen(
 
             when (selectedTabIndex.intValue) {
                 0 -> ReportsOverviewTab(uiState, viewModel)
-                1 -> ReportsTrendsTab()
+                1 -> ReportsTrendsTab(viewModel)
             }
         }
     }
@@ -87,7 +87,6 @@ private fun ReportsOverviewTab(
     viewModel: ReportsViewModel
 ) {
     val incomeExpenseState by viewModel.incomeExpenseState.collectAsState()
-    val dailyTrendState by viewModel.dailyTrendState.collectAsState()
 
     if (uiState.isLoading) {
         Box(
@@ -148,20 +147,8 @@ private fun ReportsOverviewTab(
             expense = incomeExpenseState.expense
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Section 3: Daily Spending Trend
-        Text(
-            text = "Daily Spending Trend",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        DailyTrendChart(data = dailyTrendState)
-
         if (uiState.items.isEmpty() && incomeExpenseState.income == 0.0 && 
-            incomeExpenseState.expense == 0.0 && dailyTrendState.all { it.amount == 0.0 }) {
+            incomeExpenseState.expense == 0.0) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "No data available.\nAdd some transactions to see your reports.",
@@ -174,18 +161,42 @@ private fun ReportsOverviewTab(
 }
 
 @Composable
-private fun ReportsTrendsTab() {
-    Box(
+private fun ReportsTrendsTab(
+    viewModel: ReportsViewModel
+) {
+    val dailyTrendState by viewModel.dailyTrendState.collectAsState()
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Trends\nComing Soon",
+            text = "Daily Spending Pattern",
             style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center
+            fontWeight = FontWeight.SemiBold
         )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Last 30 Days",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        DailyTrendChart(data = dailyTrendState)
+
+        if (dailyTrendState.isEmpty() || dailyTrendState.all { it.amount == 0.0 }) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No data available.\nAdd some transactions to see your trends.",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
