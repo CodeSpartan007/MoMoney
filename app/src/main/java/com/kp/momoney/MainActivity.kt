@@ -56,6 +56,13 @@ private fun MainScreen() {
         if (Firebase.auth.currentUser == null) Screen.Login.route else Screen.Home.route
     }
     val isAuthRoute = currentRoute == Screen.Login.route || currentRoute == Screen.Register.route
+    
+    // Determine bottom bar visibility based on current route
+    val showBottomBar = currentRoute in listOf(
+        Screen.Home.route,
+        Screen.Reports.route,
+        Screen.Budget.route
+    )
 
     Scaffold(
         floatingActionButton = {
@@ -74,7 +81,7 @@ private fun MainScreen() {
             }
         },
         bottomBar = {
-            if (!isAuthRoute && currentRoute != Screen.AddTransaction.route) {
+            if (showBottomBar) {
                 NavigationBar {
                     val destinations = listOf(
                         Screen.Home to Pair("Home", Icons.Filled.Home),

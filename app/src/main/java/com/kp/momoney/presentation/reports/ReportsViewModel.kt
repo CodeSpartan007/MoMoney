@@ -1,16 +1,22 @@
 package com.kp.momoney.presentation.reports
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.repository.TransactionRepository
+import com.kp.momoney.util.CsvUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Calendar
+import javax.inject.Inject
 
 data class CategoryPercentage(
     val categoryName: String,
@@ -172,6 +178,42 @@ class ReportsViewModel @Inject constructor(
                 }.sortedBy { it.day }
 
                 _dailyTrendState.value = dailyPoints
+            }
+        }
+    }
+
+    fun exportData(context: Context) {
+        viewModelScope.launch {
+            try {
+                // Fetch all transactions
+                val transactions = transactionRepository.getAllTransactions().first()
+                
+                // Generate CSV string
+                val csvContent = CsvUtils.generateCsv(transactions)
+                
+                // Write to file
+                val file = File(context.cacheDir, "finance_export.csv")
+                file.writeText(csvContent)
+                
+                // Get URI using FileProvider
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                
+                // Create intent to share
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/csv"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                
+                // Launch share chooser
+                context.startActivity(Intent.createChooser(intent, "Export via"))
+            } catch (e: Exception) {
+                // Error handling - could show a toast or snackbar
+                e.printStackTrace()
             }
         }
     }
