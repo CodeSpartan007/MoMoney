@@ -38,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.kp.momoney.presentation.reports.components.IncomeExpenseBarChart
+import com.kp.momoney.presentation.reports.components.DailyTrendChart
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +74,7 @@ fun ReportsScreen(
             }
 
             when (selectedTabIndex.intValue) {
-                0 -> ReportsOverviewTab(uiState)
+                0 -> ReportsOverviewTab(uiState, viewModel)
                 1 -> ReportsTrendsTab()
             }
         }
@@ -81,8 +83,12 @@ fun ReportsScreen(
 
 @Composable
 private fun ReportsOverviewTab(
-    uiState: ReportsUiState
+    uiState: ReportsUiState,
+    viewModel: ReportsViewModel
 ) {
+    val incomeExpenseState by viewModel.incomeExpenseState.collectAsState()
+    val dailyTrendState by viewModel.dailyTrendState.collectAsState()
+
     if (uiState.isLoading) {
         Box(
             modifier = Modifier
@@ -94,21 +100,6 @@ private fun ReportsOverviewTab(
         return
     }
 
-    if (uiState.items.isEmpty() || uiState.totalExpense <= 0.0) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No expense data yet.\nAdd some expenses to see your reports.",
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-        return
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -116,27 +107,68 @@ private fun ReportsOverviewTab(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Section 1: Spending by Category
+        if (uiState.items.isNotEmpty() && uiState.totalExpense > 0.0) {
+            Text(
+                text = "Spending by Category",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            DonutChart(
+                items = uiState.items,
+                modifier = Modifier.size(220.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                uiState.items.forEach { item ->
+                    CategoryLegendRow(item = item)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        // Section 2: Income vs Expense
         Text(
-            text = "Spending by Category",
+            text = "Income vs Expense",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        DonutChart(
-            items = uiState.items,
-            modifier = Modifier.size(220.dp)
+        IncomeExpenseBarChart(
+            income = incomeExpenseState.income,
+            expense = incomeExpenseState.expense
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            uiState.items.forEach { item ->
-                CategoryLegendRow(item = item)
-            }
+        // Section 3: Daily Spending Trend
+        Text(
+            text = "Daily Spending Trend",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        DailyTrendChart(data = dailyTrendState)
+
+        if (uiState.items.isEmpty() && incomeExpenseState.income == 0.0 && 
+            incomeExpenseState.expense == 0.0 && dailyTrendState.all { it.amount == 0.0 }) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No data available.\nAdd some transactions to see your reports.",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
