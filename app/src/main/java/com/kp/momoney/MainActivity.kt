@@ -7,7 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -84,9 +86,9 @@ private fun MainScreen() {
             if (showBottomBar) {
                 NavigationBar {
                     val destinations = listOf(
-                        Screen.Home to Pair("Home", Icons.Filled.Home),
-                        Screen.Budget to Pair("Budget", Icons.Filled.Home),
-                        Screen.Reports to Pair("Reports", Icons.Filled.Home)
+                        Screen.Home to Pair("Home", Icons.Default.Home),
+                        Screen.Budget to Pair("Budgets", Icons.Default.DateRange),
+                        Screen.Reports to Pair("Reports", Icons.AutoMirrored.Filled.List)
                     )
 
                     destinations.forEach { (screen, labelIcon) ->

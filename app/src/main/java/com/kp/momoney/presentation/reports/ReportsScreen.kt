@@ -1,5 +1,6 @@
 package com.kp.momoney.presentation.reports
 
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +58,7 @@ fun ReportsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Reports") },
                 actions = {
                     IconButton(onClick = { viewModel.exportData(context) }) {

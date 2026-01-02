@@ -61,25 +61,25 @@ object DatabaseModule {
                 name = "Salary",
                 type = "Income",
                 colorHex = "4CAF50", // Green
-                iconName = "money_icon"
+                iconName = "salary"
             ),
             CategoryEntity(
                 name = "Food",
                 type = "Expense",
                 colorHex = "FF9800", // Orange
-                iconName = "restaurant_icon"
+                iconName = "food"
             ),
             CategoryEntity(
                 name = "Transport",
                 type = "Expense",
                 colorHex = "2196F3", // Blue
-                iconName = "car_icon"
+                iconName = "transport"
             ),
             CategoryEntity(
                 name = "Rent",
                 type = "Expense",
                 colorHex = "F44336", // Red
-                iconName = "home_icon"
+                iconName = "rent"
             )
         )
         

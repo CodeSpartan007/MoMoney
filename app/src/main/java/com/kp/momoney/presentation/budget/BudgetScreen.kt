@@ -1,5 +1,7 @@
 package com.kp.momoney.presentation.budget
 
+import androidx.compose.material3.CenterAlignedTopAppBar
+import com.kp.momoney.util.getIconByName
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,7 +37,7 @@ fun BudgetScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Budgets") }
             )
         }
@@ -196,11 +198,11 @@ fun BudgetItem(
                             .background(try { Color(android.graphics.Color.parseColor(budget.category.color)) } catch(e:Exception) { MaterialTheme.colorScheme.primary }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = budget.category.name.firstOrNull()?.toString() ?: "?",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                        Icon(
+                            imageVector = getIconByName(budget.category.icon),
+                            contentDescription = budget.category.name,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 

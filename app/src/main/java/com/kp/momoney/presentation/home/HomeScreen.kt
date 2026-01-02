@@ -1,5 +1,7 @@
 package com.kp.momoney.presentation.home
 
+import androidx.compose.material3.CenterAlignedTopAppBar
+import com.kp.momoney.util.getIconByName
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,7 +55,7 @@ fun HomeScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        TopAppBar(
+        CenterAlignedTopAppBar(
             title = { Text("MoMoney") },
             actions = {
                 IconButton(onClick = onNavigateToSettings) {
@@ -237,15 +239,11 @@ fun TransactionItem(transaction: Transaction) {
                 ) {
                     // Using a simple circle with first letter of category as icon placeholder
                     // In production, you'd use actual icon resources based on categoryIcon
-                    Text(
-                        text = if (transaction.categoryIcon.isNotEmpty()) {
-                            transaction.categoryIcon.first().toString()
-                        } else {
-                            transaction.categoryName.firstOrNull()?.toString() ?: "?"
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                    Icon(
+                        imageVector = getIconByName(transaction.categoryIcon),
+                        contentDescription = transaction.categoryName,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
