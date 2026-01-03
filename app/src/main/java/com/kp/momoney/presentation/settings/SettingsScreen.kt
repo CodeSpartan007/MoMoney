@@ -3,6 +3,7 @@ package com.kp.momoney.presentation.settings
 import android.app.ActivityManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.kp.momoney.ui.theme.AppThemeConfig
 import com.kp.momoney.ui.theme.ThemeSeeds
+import com.kp.momoney.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +66,18 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo_mini),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(end = 8.dp)
+                        )
+                        Text(text = "Settings")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(

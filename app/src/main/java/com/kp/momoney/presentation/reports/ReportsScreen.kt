@@ -1,6 +1,7 @@
 package com.kp.momoney.presentation.reports
 
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +50,7 @@ import com.kp.momoney.presentation.common.AppLoadingAnimation
 import com.kp.momoney.presentation.reports.components.IncomeExpenseBarChart
 import com.kp.momoney.presentation.reports.components.DailyTrendChart
 import com.kp.momoney.util.toCurrency
+import com.kp.momoney.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +64,18 @@ fun ReportsScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Reports") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo_mini),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(end = 8.dp)
+                        )
+                        Text(text = "Reports")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.exportData(context) }) {
                         Icon(

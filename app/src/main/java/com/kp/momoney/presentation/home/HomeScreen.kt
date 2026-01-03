@@ -2,6 +2,7 @@ package com.kp.momoney.presentation.home
 
 import androidx.compose.material3.CenterAlignedTopAppBar
 import com.kp.momoney.util.getIconByName
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -43,6 +45,7 @@ import com.kp.momoney.domain.model.Transaction
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.kp.momoney.util.toCurrency
+import com.kp.momoney.R
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +61,18 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         CenterAlignedTopAppBar(
-            title = { Text("MoMoney") },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_logo_mini),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .padding(end = 8.dp)
+                    )
+                    Text(text = "MoMoney")
+                }
+            },
             actions = {
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(

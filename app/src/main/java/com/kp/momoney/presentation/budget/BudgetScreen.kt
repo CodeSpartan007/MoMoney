@@ -2,11 +2,13 @@ package com.kp.momoney.presentation.budget
 
 import androidx.compose.material3.CenterAlignedTopAppBar
 import com.kp.momoney.util.getIconByName
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -24,6 +26,7 @@ import com.kp.momoney.presentation.common.AppLoadingAnimation
 import java.text.NumberFormat
 import java.util.Locale
 import com.kp.momoney.util.toCurrency
+import com.kp.momoney.R
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +44,18 @@ fun BudgetScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Budgets") }
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo_mini),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(end = 8.dp)
+                        )
+                        Text(text = "Budgets")
+                    }
+                }
             )
         }
     ) { paddingValues ->
