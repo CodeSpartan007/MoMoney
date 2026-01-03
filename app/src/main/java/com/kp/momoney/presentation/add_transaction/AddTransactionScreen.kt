@@ -1,6 +1,7 @@
 package com.kp.momoney.presentation.add_transaction
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.R
+import com.kp.momoney.presentation.common.AppLoadingAnimation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +52,7 @@ fun AddTransactionScreen(
     val note by viewModel.note.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val event by viewModel.event.collectAsState()
 
     var isCategoryExpanded by remember { mutableStateOf(false) }
@@ -94,93 +97,109 @@ fun AddTransactionScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
         ) {
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { viewModel.amount.value = it },
-                label = { Text("Amount") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (categories.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Loading categories...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            if (isLoading) {
+                // Show loading animation centered
+                AppLoadingAnimation(
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
-                ExposedDropdownMenuBox(
-                    expanded = isCategoryExpanded,
-                    onExpandedChange = { isCategoryExpanded = !isCategoryExpanded }
+                // Show form content
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
                 ) {
-                    // FIX 2: Suppress the deprecation warning so it builds cleanly
-                    @Suppress("DEPRECATION")
                     OutlinedTextField(
-                        value = selectedCategory?.name ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryExpanded)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            // FIX 3: Use the older .menuAnchor() with no arguments
-                            .menuAnchor()
+                        value = amount,
+                        onValueChange = { viewModel.amount.value = it },
+                        label = { Text("Amount") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        enabled = !isLoading
                     )
 
-                    ExposedDropdownMenu(
-                        expanded = isCategoryExpanded,
-                        onDismissRequest = { isCategoryExpanded = false }
-                    ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = {
-                                    viewModel.selectedCategory.value = category
-                                    isCategoryExpanded = false
-                                }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (categories.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Loading categories...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    } else {
+                        ExposedDropdownMenuBox(
+                            expanded = isCategoryExpanded,
+                            onExpandedChange = { isCategoryExpanded = !isCategoryExpanded }
+                        ) {
+                            // FIX 2: Suppress the deprecation warning so it builds cleanly
+                            @Suppress("DEPRECATION")
+                            OutlinedTextField(
+                                value = selectedCategory?.name ?: "",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Category") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryExpanded)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    // FIX 3: Use the older .menuAnchor() with no arguments
+                                    .menuAnchor(),
+                                enabled = !isLoading
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = isCategoryExpanded,
+                                onDismissRequest = { isCategoryExpanded = false }
+                            ) {
+                                categories.forEach { category ->
+                                    DropdownMenuItem(
+                                        text = { Text(category.name) },
+                                        onClick = {
+                                            viewModel.selectedCategory.value = category
+                                            isCategoryExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = { viewModel.note.value = it },
+                        label = { Text("Note") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3,
+                        singleLine = false,
+                        enabled = !isLoading
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Button(
+                        onClick = { viewModel.saveTransaction() },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = categories.isNotEmpty() && !isLoading
+                    ) {
+                        Text("Save")
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = note,
-                onValueChange = { viewModel.note.value = it },
-                label = { Text("Note") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 3,
-                singleLine = false
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(
-                onClick = { viewModel.saveTransaction() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = categories.isNotEmpty()
-            ) {
-                Text("Save")
             }
         }
     }

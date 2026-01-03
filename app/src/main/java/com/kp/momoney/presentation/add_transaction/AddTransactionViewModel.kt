@@ -7,6 +7,7 @@ import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,9 @@ class AddTransactionViewModel @Inject constructor(
     
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+    
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     
     private val _event = MutableStateFlow<AddTransactionEvent?>(null)
     val event: StateFlow<AddTransactionEvent?> = _event.asStateFlow()
@@ -95,15 +99,25 @@ class AddTransactionViewModel @Inject constructor(
         )
         
         viewModelScope.launch {
+            _isLoading.value = true
             try {
+                // Do the actual save
                 transactionRepository.insertTransaction(transaction)
+                
+                // Add 3-second artificial delay
+                delay(3000)
+                
+                // Emit success event
                 _event.value = AddTransactionEvent.Success
+                
                 // Clear form
                 amount.value = ""
                 note.value = ""
                 selectedCategory.value = null
             } catch (e: Exception) {
                 _event.value = AddTransactionEvent.Error("Failed to save transaction: ${e.message}")
+            } finally {
+                _isLoading.value = false
             }
         }
     }
