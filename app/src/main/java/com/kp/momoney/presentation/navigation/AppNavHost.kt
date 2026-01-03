@@ -16,17 +16,14 @@ import com.kp.momoney.presentation.budget.BudgetScreen
 import com.kp.momoney.presentation.home.HomeScreen
 import com.kp.momoney.presentation.reports.ReportsScreen
 import com.kp.momoney.presentation.settings.SettingsScreen
+import com.kp.momoney.presentation.splash.SplashScreen
 import com.kp.momoney.ui.theme.AppThemeConfig
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
     innerPadding: PaddingValues,
-    startDestination: String = if (Firebase.auth.currentUser == null) {
-        Screen.Login.route
-    } else {
-        Screen.Home.route
-    },
+    startDestination: String = Screen.Splash.route,
     themeConfig: AppThemeConfig,
     onThemeChanged: (AppThemeConfig) -> Unit
 ) {
@@ -35,6 +32,23 @@ fun AppNavHost(
         startDestination = startDestination,
         modifier = Modifier.padding(innerPadding)
     ) {
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onSplashFinished = {
+                    // Check if user is logged in
+                    val isLoggedIn = Firebase.auth.currentUser != null
+                    val destination = if (isLoggedIn) {
+                        Screen.Home.route
+                    } else {
+                        Screen.Login.route
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {

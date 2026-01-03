@@ -70,10 +70,8 @@ private fun MainScreen(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val startDestination = remember {
-        if (Firebase.auth.currentUser == null) Screen.Login.route else Screen.Home.route
-    }
-    val isAuthRoute = currentRoute == Screen.Login.route || currentRoute == Screen.Register.route
+    val startDestination = Screen.Splash.route
+    val isAuthRoute = currentRoute == Screen.Login.route || currentRoute == Screen.Register.route || currentRoute == Screen.Splash.route
     
     // Determine bottom bar visibility based on current route
     val showBottomBar = currentRoute in listOf(
