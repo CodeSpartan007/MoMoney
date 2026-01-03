@@ -32,7 +32,7 @@ import com.google.firebase.ktx.Firebase
 import com.kp.momoney.presentation.navigation.AppNavHost
 import com.kp.momoney.presentation.navigation.Screen
 import com.kp.momoney.ui.theme.AppThemeConfig
-import com.kp.momoney.ui.theme.JungleGreen
+import com.kp.momoney.ui.theme.SunYellow
 import com.kp.momoney.ui.theme.MoMoneyTheme
 
 @AndroidEntryPoint
@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             var themeConfig by remember { 
-                mutableStateOf(AppThemeConfig(seedColor = JungleGreen, isDark = false))
+                mutableStateOf(AppThemeConfig(seedColor = SunYellow, isDark = false))
             }
             
             MoMoneyTheme(themeConfig = themeConfig) {

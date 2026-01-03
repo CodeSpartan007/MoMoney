@@ -372,9 +372,9 @@ fun generateColorScheme(seedColor: Color, isDark: Boolean): ColorScheme {
         seedColor == SunYellow -> {
             if (isDark) SunDarkColorScheme else SunLightColorScheme
         }
-        // Fallback to Jungle if unknown color
+        // Fallback to Sun if unknown color
         else -> {
-            if (isDark) JungleDarkColorScheme else JungleLightColorScheme
+            if (isDark) SunDarkColorScheme else SunLightColorScheme
         }
     }
 }
