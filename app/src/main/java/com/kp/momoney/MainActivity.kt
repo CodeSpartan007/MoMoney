@@ -20,7 +20,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -29,6 +31,8 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.kp.momoney.presentation.navigation.AppNavHost
 import com.kp.momoney.presentation.navigation.Screen
+import com.kp.momoney.ui.theme.AppThemeConfig
+import com.kp.momoney.ui.theme.JungleGreen
 import com.kp.momoney.ui.theme.MoMoneyTheme
 
 @AndroidEntryPoint
@@ -37,12 +41,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MoMoneyTheme {
+            var themeConfig by remember { 
+                mutableStateOf(AppThemeConfig(seedColor = JungleGreen, isDark = false))
+            }
+            
+            MoMoneyTheme(themeConfig = themeConfig) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen()
+                    MainScreen(
+                        themeConfig = themeConfig,
+                        onThemeChanged = { newConfig ->
+                            themeConfig = newConfig
+                        }
+                    )
                 }
             }
         }
@@ -50,7 +63,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MainScreen() {
+private fun MainScreen(
+    themeConfig: AppThemeConfig,
+    onThemeChanged: (AppThemeConfig) -> Unit
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -123,7 +139,9 @@ private fun MainScreen() {
         AppNavHost(
             navController = navController,
             innerPadding = innerPadding,
-            startDestination = startDestination
+            startDestination = startDestination,
+            themeConfig = themeConfig,
+            onThemeChanged = onThemeChanged
         )
     }
 }

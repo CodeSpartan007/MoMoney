@@ -16,6 +16,7 @@ import com.kp.momoney.presentation.budget.BudgetScreen
 import com.kp.momoney.presentation.home.HomeScreen
 import com.kp.momoney.presentation.reports.ReportsScreen
 import com.kp.momoney.presentation.settings.SettingsScreen
+import com.kp.momoney.ui.theme.AppThemeConfig
 
 @Composable
 fun AppNavHost(
@@ -25,7 +26,9 @@ fun AppNavHost(
         Screen.Login.route
     } else {
         Screen.Home.route
-    }
+    },
+    themeConfig: AppThemeConfig,
+    onThemeChanged: (AppThemeConfig) -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -86,7 +89,9 @@ fun AppNavHost(
         
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                themeConfig = themeConfig,
+                onThemeChanged = onThemeChanged
             )
         }
     }
