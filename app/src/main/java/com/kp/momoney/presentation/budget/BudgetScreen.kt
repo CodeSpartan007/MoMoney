@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.domain.model.BudgetState
+import com.kp.momoney.presentation.common.AppLoadingAnimation
 import java.text.NumberFormat
 import java.util.Locale
 import com.kp.momoney.util.toCurrency
@@ -52,7 +53,7 @@ fun BudgetScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    AppLoadingAnimation(modifier = Modifier.align(Alignment.Center))
                 }
             }
             uiState.error != null -> {

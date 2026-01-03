@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.kp.momoney.presentation.common.AppLoadingAnimation
 import com.kp.momoney.presentation.reports.components.IncomeExpenseBarChart
 import com.kp.momoney.presentation.reports.components.DailyTrendChart
 import com.kp.momoney.util.toCurrency
@@ -110,7 +111,7 @@ private fun ReportsOverviewTab(
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "Loading...", style = MaterialTheme.typography.bodyMedium)
+            AppLoadingAnimation(modifier = Modifier.align(Alignment.Center))
         }
         return
     }
