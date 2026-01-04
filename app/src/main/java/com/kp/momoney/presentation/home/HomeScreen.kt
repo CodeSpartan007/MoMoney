@@ -4,6 +4,8 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import com.kp.momoney.util.getIconByName
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +22,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,12 +59,14 @@ import com.kp.momoney.util.toCurrency
 import com.kp.momoney.R
 import com.kp.momoney.presentation.home.components.SearchFilterBar
 import com.kp.momoney.presentation.home.components.FilterSheet
+import com.kp.momoney.presentation.common.AppLoadingAnimation
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToEditTransaction: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     // FIX: Use collectAsState() to listen for real-time updates
@@ -67,34 +77,73 @@ fun HomeScreen(
     val filterType by viewModel.filterType.collectAsState()
     val filterMinAmount by viewModel.filterMinAmount.collectAsState()
     val filterMaxAmount by viewModel.filterMaxAmount.collectAsState()
+    val selectedTransactionId by viewModel.selectedTransactionId.collectAsState()
+    val isLoadingAction by viewModel.isLoadingAction.collectAsState()
     
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        CenterAlignedTopAppBar(
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_logo_mini),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .padding(end = 8.dp)
-                    )
-                    Text(text = "MoMoney")
+        // Contextual Top Bar when transaction is selected
+        if (selectedTransactionId != null) {
+            TopAppBar(
+                title = { Text("1 Selected") },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.clearSelection() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            selectedTransactionId?.let { id ->
+                                onNavigateToEditTransaction(id)
+                                viewModel.clearSelection()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "Edit"
+                        )
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete"
+                        )
+                    }
                 }
-            },
-            actions = {
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings"
-                    )
+            )
+        } else {
+            CenterAlignedTopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo_mini),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(end = 8.dp)
+                        )
+                        Text(text = "MoMoney")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
                 }
-            }
-        )
+            )
+        }
 
         if (uiState.isLoading) {
             Box(
@@ -144,7 +193,17 @@ fun HomeScreen(
                     }
                 } else {
                     items(uiState.transactions) { transaction ->
-                        TransactionItem(transaction = transaction)
+                        val isSelected = transaction.id == selectedTransactionId
+                        TransactionItem(
+                            transaction = transaction,
+                            isSelected = isSelected,
+                            onLongClick = { viewModel.onTransactionLongClick(transaction.id) },
+                            onClick = {
+                                if (selectedTransactionId != null) {
+                                    viewModel.clearSelection()
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -170,6 +229,42 @@ fun HomeScreen(
                 currentMinAmount = filterMinAmount,
                 currentMaxAmount = filterMaxAmount
             )
+        }
+        
+        // Delete Confirmation Dialog
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Transaction") },
+                text = { Text("Are you sure you want to delete this transaction?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deleteSelectedTransaction()
+                            showDeleteDialog = false
+                        }
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
+        // Loading Overlay
+        if (isLoadingAction) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                AppLoadingAnimation()
+            }
         }
     }
 }
@@ -250,7 +345,12 @@ fun TotalBalanceCard(
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction) {
+fun TransactionItem(
+    transaction: Transaction,
+    isSelected: Boolean = false,
+    onLongClick: () -> Unit = {},
+    onClick: () -> Unit = {}
+) {
     val isIncome = transaction.type.equals("Income", ignoreCase = true)
     val amountColor = if (isIncome) {
         Color(0xFF4CAF50) // Green
@@ -261,9 +361,18 @@ fun TransactionItem(transaction: Transaction) {
     val amountPrefix = if (isIncome) "+" else "-"
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onLongClick = onLongClick,
+                onClick = onClick
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
         )
     ) {
         Row(

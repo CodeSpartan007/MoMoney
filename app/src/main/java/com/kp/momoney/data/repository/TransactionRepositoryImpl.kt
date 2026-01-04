@@ -42,6 +42,23 @@ class TransactionRepositoryImpl @Inject constructor(
         }
     }
     
+    override suspend fun getTransactionById(id: Long): Transaction? {
+        val entity = transactionDao.getTransactionById(id) ?: return null
+        // Need to get category info
+        val category = entity.categoryId?.let { categoryDao.getCategoryById(it) }
+        return Transaction(
+            id = entity.id,
+            amount = entity.amount,
+            date = Date(entity.date),
+            note = entity.note.orEmpty(),
+            type = entity.type,
+            categoryId = entity.categoryId,
+            categoryName = category?.name.orEmpty(),
+            categoryColor = category?.colorHex.orEmpty(),
+            categoryIcon = category?.iconName.orEmpty()
+        )
+    }
+    
     override suspend fun insertTransaction(transaction: Transaction) {
         val categoryId = resolveCategoryId(transaction)
         val firestoreId = UUID.randomUUID().toString()
@@ -64,6 +81,38 @@ class TransactionRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 Log.e("TransactionRepo", "Failed to sync transaction to Firestore", e)
                 // Continue even if Firestore sync fails - local data is saved
+            }
+        }
+    }
+    
+    override suspend fun updateTransaction(transaction: Transaction) {
+        // Get existing entity to preserve firestoreId
+        val existingEntity = transactionDao.getTransactionById(transaction.id)
+        val firestoreId = existingEntity?.firestoreId ?: UUID.randomUUID().toString()
+        
+        val categoryId = resolveCategoryId(transaction)
+        val entity = transaction.toEntity(categoryId, firestoreId).copy(
+            id = transaction.id,
+            firestoreId = firestoreId
+        )
+        
+        // Update in Room
+        transactionDao.updateTransaction(entity)
+        
+        // Sync to Firestore if user is authenticated
+        currentUserId?.let { userId ->
+            try {
+                val firestoreMap = transaction.toFirestoreMap(firestoreId)
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("transactions")
+                    .document(firestoreId)
+                    .set(firestoreMap)
+                    .await()
+                Log.d("TransactionRepo", "Transaction updated in Firestore: $firestoreId")
+            } catch (e: Exception) {
+                Log.e("TransactionRepo", "Failed to update transaction in Firestore", e)
+                // Continue even if Firestore sync fails - local data is updated
             }
         }
     }

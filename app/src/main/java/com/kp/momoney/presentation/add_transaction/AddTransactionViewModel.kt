@@ -1,5 +1,6 @@
 package com.kp.momoney.presentation.add_transaction
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Category
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Date
 import javax.inject.Inject
@@ -24,7 +26,8 @@ sealed class AddTransactionEvent {
 @HiltViewModel
 class AddTransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     val amount = MutableStateFlow("")
@@ -41,8 +44,36 @@ class AddTransactionViewModel @Inject constructor(
     private val _event = MutableStateFlow<AddTransactionEvent?>(null)
     val event: StateFlow<AddTransactionEvent?> = _event.asStateFlow()
     
+    private val transactionId: Long? = savedStateHandle.get<Long>("transactionId")?.takeIf { it > 0 }
+    val isEditMode: Boolean = transactionId != null
+    
     init {
         loadCategories()
+        if (transactionId != null) {
+            loadTransaction(transactionId)
+        }
+    }
+    
+    private fun loadTransaction(id: Long) {
+        viewModelScope.launch {
+            try {
+                val transaction = transactionRepository.getTransactionById(id)
+                if (transaction != null) {
+                    amount.value = transaction.amount.toString()
+                    note.value = transaction.note
+                    transactionDate.value = transaction.date.time
+                    
+                    // Find and set the category
+                    val categories = categoryRepository.getAllCategories()
+                        .catch { emit(emptyList()) }
+                        .first()
+                    val category = categories.find { it.id == transaction.categoryId }
+                    selectedCategory.value = category
+                }
+            } catch (e: Exception) {
+                _event.value = AddTransactionEvent.Error("Failed to load transaction: ${e.message}")
+            }
+        }
     }
     
     private fun loadCategories() {
@@ -89,7 +120,7 @@ class AddTransactionViewModel @Inject constructor(
         val transactionType = category.type
         
         val transaction = Transaction(
-            id = 0, // Will be auto-generated
+            id = transactionId ?: 0, // Use existing ID if editing, 0 for new
             amount = amountDouble,
             date = Date(transactionDate.value),
             note = noteValue,
@@ -103,8 +134,12 @@ class AddTransactionViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Do the actual save
-                transactionRepository.insertTransaction(transaction)
+                // Update or insert based on edit mode
+                if (isEditMode && transactionId != null) {
+                    transactionRepository.updateTransaction(transaction)
+                } else {
+                    transactionRepository.insertTransaction(transaction)
+                }
                 
                 // Add 3-second artificial delay
                 delay(3000)
@@ -112,11 +147,13 @@ class AddTransactionViewModel @Inject constructor(
                 // Emit success event
                 _event.value = AddTransactionEvent.Success
                 
-                // Clear form
-                amount.value = ""
-                note.value = ""
-                selectedCategory.value = null
-                transactionDate.value = System.currentTimeMillis()
+                // Clear form only if not in edit mode
+                if (!isEditMode) {
+                    amount.value = ""
+                    note.value = ""
+                    selectedCategory.value = null
+                    transactionDate.value = System.currentTimeMillis()
+                }
             } catch (e: Exception) {
                 _event.value = AddTransactionEvent.Error("Failed to save transaction: ${e.message}")
             } finally {

@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.kp.momoney.presentation.auth.LoginScreen
@@ -83,11 +85,29 @@ fun AppNavHost(
             HomeScreen(
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToEditTransaction = { transactionId ->
+                    navController.navigate(Screen.AddTransaction.createRoute(transactionId))
                 }
             )
         }
         
+        // Route for adding new transaction (no ID)
         composable(Screen.AddTransaction.route) {
+            AddTransactionScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Route for editing existing transaction (with ID as path parameter)
+        composable(
+            route = "${Screen.AddTransaction.route}/{transactionId}",
+            arguments = listOf(
+                navArgument("transactionId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
             AddTransactionScreen(
                 onNavigateBack = { navController.popBackStack() }
             )

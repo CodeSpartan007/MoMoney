@@ -6,7 +6,15 @@ package com.kp.momoney.presentation.navigation
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Home : Screen("home")
-    object AddTransaction : Screen("add_transaction")
+    object AddTransaction : Screen("add_transaction") {
+        fun createRoute(transactionId: Long? = null): String {
+            return if (transactionId != null && transactionId > 0) {
+                "add_transaction/$transactionId"
+            } else {
+                "add_transaction"
+            }
+        }
+    }
     object Budget : Screen("budget")
     object Reports : Screen("reports")
     object Settings : Screen("settings")

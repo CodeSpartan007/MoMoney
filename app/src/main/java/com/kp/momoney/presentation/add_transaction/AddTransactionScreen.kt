@@ -15,7 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,6 +64,7 @@ fun AddTransactionScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val event by viewModel.event.collectAsState()
     val transactionDate by viewModel.transactionDate.collectAsState()
+    val isEditMode = viewModel.isEditMode
 
     var isCategoryExpanded by remember { mutableStateOf(false) }
     
@@ -96,14 +97,14 @@ fun AddTransactionScreen(
                                 .size(32.dp)
                                 .padding(end = 8.dp)
                         )
-                        Text(text = "New Transaction")
+                        Text(text = if (isEditMode) "Edit Transaction" else "New Transaction")
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         // FIX 1: Use standard ArrowBack (works on all versions)
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }

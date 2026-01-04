@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 
@@ -42,6 +43,10 @@ class HomeViewModel @Inject constructor(
     val filterType = MutableStateFlow<String?>(null)
     val filterMinAmount = MutableStateFlow<String?>(null)
     val filterMaxAmount = MutableStateFlow<String?>(null)
+    
+    // Selection State
+    val selectedTransactionId = MutableStateFlow<Long?>(null)
+    val isLoadingAction = MutableStateFlow(false)
 
     init {
         // Sync data from Firestore when ViewModel is created
@@ -174,5 +179,35 @@ class HomeViewModel @Inject constructor(
         filterType.value = null
         filterMinAmount.value = null
         filterMaxAmount.value = null
+    }
+    
+    // Selection functions
+    fun onTransactionLongClick(id: Long) {
+        selectedTransactionId.value = id
+    }
+    
+    fun clearSelection() {
+        selectedTransactionId.value = null
+    }
+    
+    fun deleteSelectedTransaction() {
+        val id = selectedTransactionId.value ?: return
+        viewModelScope.launch {
+            isLoadingAction.value = true
+            try {
+                // Get the transaction to delete
+                val transaction = transactionRepository.getTransactionById(id)
+                if (transaction != null) {
+                    transactionRepository.deleteTransaction(transaction)
+                    // Add 3-second delay to simulate sync
+                    delay(3000)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoadingAction.value = false
+                selectedTransactionId.value = null
+            }
+        }
     }
 }
