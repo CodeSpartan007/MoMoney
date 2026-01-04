@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,184 +84,187 @@ fun HomeScreen(
     var showFilterSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Contextual Top Bar when transaction is selected
-        if (selectedTransactionId != null) {
-            TopAppBar(
-                title = { Text("1 Selected") },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.clearSelection() }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Close"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            selectedTransactionId?.let { id ->
-                                onNavigateToEditTransaction(id)
-                                viewModel.clearSelection()
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "Edit"
-                        )
-                    }
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete"
-                        )
-                    }
-                }
-            )
-        } else {
-            CenterAlignedTopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_logo_mini),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .padding(end = 8.dp)
-                        )
-                        Text(text = "MoMoney")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                }
-            )
-        }
-
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    TotalBalanceCard(
-                        totalIncome = uiState.totalIncome,
-                        totalExpense = uiState.totalExpense
-                    )
-                }
-                
-                item {
-                    SearchFilterBar(
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-                        onFilterClick = { showFilterSheet = true }
-                    )
-                }
-
-                if (uiState.transactions.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No transactions yet.\nTap + to add your first transaction!",
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Contextual Top Bar when transaction is selected
+            if (selectedTransactionId != null) {
+                TopAppBar(
+                    title = { Text("1 Selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Close"
                             )
                         }
-                    }
-                } else {
-                    items(uiState.transactions) { transaction ->
-                        val isSelected = transaction.id == selectedTransactionId
-                        TransactionItem(
-                            transaction = transaction,
-                            isSelected = isSelected,
-                            onLongClick = { viewModel.onTransactionLongClick(transaction.id) },
+                    },
+                    actions = {
+                        IconButton(
                             onClick = {
-                                if (selectedTransactionId != null) {
+                                selectedTransactionId?.let { id ->
+                                    onNavigateToEditTransaction(id)
                                     viewModel.clearSelection()
                                 }
                             }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit"
+                            )
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Delete"
+                            )
+                        }
+                    }
+                )
+            } else {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_logo_mini),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .padding(end = 8.dp)
+                            )
+                            Text(text = "MoMoney")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Settings"
+                            )
+                        }
+                    }
+                )
+            }
+
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        TotalBalanceCard(
+                            totalIncome = uiState.totalIncome,
+                            totalExpense = uiState.totalExpense
                         )
+                    }
+                    
+                    item {
+                        SearchFilterBar(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                            onFilterClick = { showFilterSheet = true }
+                        )
+                    }
+
+                    if (uiState.transactions.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No transactions yet.\nTap + to add your first transaction!",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        items(uiState.transactions) { transaction ->
+                            val isSelected = transaction.id == selectedTransactionId
+                            TransactionItem(
+                                transaction = transaction,
+                                isSelected = isSelected,
+                                onLongClick = { viewModel.onTransactionLongClick(transaction.id) },
+                                onClick = {
+                                    if (selectedTransactionId != null) {
+                                        viewModel.clearSelection()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
-        
-        // Filter Sheet
-        if (showFilterSheet) {
-            FilterSheet(
-                onDismiss = { showFilterSheet = false },
-                onApply = { startDate, endDate, type, categories, minAmount, maxAmount ->
-                    viewModel.updateFilterDateRange(startDate, endDate)
-                    viewModel.updateFilterType(type)
-                    viewModel.updateFilterCategories(categories)
-                    viewModel.updateFilterAmountRange(minAmount, maxAmount)
-                },
-                onReset = {
-                    viewModel.resetFilters()
-                },
-                categoryRepository = viewModel.categoryRepository,
-                currentDateRange = filterDateRange,
-                currentType = filterType,
-                currentCategories = filterCategories,
-                currentMinAmount = filterMinAmount,
-                currentMaxAmount = filterMaxAmount
-            )
-        }
-        
-        // Delete Confirmation Dialog
-        if (showDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Transaction") },
-                text = { Text("Are you sure you want to delete this transaction?") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.deleteSelectedTransaction()
-                            showDeleteDialog = false
+            
+            // Filter Sheet
+            if (showFilterSheet) {
+                FilterSheet(
+                    onDismiss = { showFilterSheet = false },
+                    onApply = { startDate, endDate, type, categories, minAmount, maxAmount ->
+                        viewModel.updateFilterDateRange(startDate, endDate)
+                        viewModel.updateFilterType(type)
+                        viewModel.updateFilterCategories(categories)
+                        viewModel.updateFilterAmountRange(minAmount, maxAmount)
+                    },
+                    onReset = {
+                        viewModel.resetFilters()
+                    },
+                    categoryRepository = viewModel.categoryRepository,
+                    currentDateRange = filterDateRange,
+                    currentType = filterType,
+                    currentCategories = filterCategories,
+                    currentMinAmount = filterMinAmount,
+                    currentMaxAmount = filterMaxAmount
+                )
+            }
+            
+            // Delete Confirmation Dialog
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("Delete Transaction") },
+                    text = { Text("Are you sure you want to delete this transaction?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.deleteSelectedTransaction()
+                                showDeleteDialog = false
+                            }
+                        ) {
+                            Text("Delete")
                         }
-                    ) {
-                        Text("Delete")
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel")
+                        }
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
+                )
+            }
         }
-        
-        // Loading Overlay
+
+        // Loading Overlay - This sits ON TOP of the Scaffold
         if (isLoadingAction) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)),
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(enabled = false) {}, // Block touches
                 contentAlignment = Alignment.Center
             ) {
                 AppLoadingAnimation()
