@@ -13,9 +13,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -25,6 +27,7 @@ data class HomeUiState(
     val isLoading: Boolean = true // Added loading state just in case
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
@@ -37,6 +40,8 @@ class HomeViewModel @Inject constructor(
     val filterDateRange = MutableStateFlow<Pair<Long, Long>?>(null)
     val filterCategories = MutableStateFlow<List<Int>>(emptyList())
     val filterType = MutableStateFlow<String?>(null)
+    val filterMinAmount = MutableStateFlow<String?>(null)
+    val filterMaxAmount = MutableStateFlow<String?>(null)
 
     init {
         // Sync data from Firestore when ViewModel is created
@@ -56,6 +61,7 @@ class HomeViewModel @Inject constructor(
     private val allTransactions = transactionRepository.getAllTransactions()
 
     // Filtered transactions flow that applies all filters
+    // Using nested combine since combine supports max 5 flows directly
     private val filteredTransactions = combine(
         allTransactions,
         searchQuery,
@@ -63,29 +69,48 @@ class HomeViewModel @Inject constructor(
         filterCategories,
         filterType
     ) { transactions, query, dateRange, categories, type ->
-        transactions.filter { transaction ->
-            // Search filter
-            val matchesSearch = query.isEmpty() || 
-                transaction.note.contains(query, ignoreCase = true) ||
-                transaction.categoryName.contains(query, ignoreCase = true)
+        combine(filterMinAmount, filterMaxAmount) { minAmount, maxAmount ->
+            transactions.filter { transaction ->
+                // Search filter
+                val matchesSearch = query.isEmpty() || 
+                    transaction.note.contains(query, ignoreCase = true) ||
+                    transaction.categoryName.contains(query, ignoreCase = true)
 
-            // Date range filter
-            val matchesDateRange = dateRange == null || run {
-                val transactionTime = transaction.date.time
-                transactionTime >= dateRange.first && transactionTime <= dateRange.second
+                // Date range filter
+                val matchesDateRange = dateRange == null || run {
+                    val transactionTime = transaction.date.time
+                    transactionTime >= dateRange.first && transactionTime <= dateRange.second
+                }
+
+                // Category filter
+                val matchesCategory = categories.isEmpty() || 
+                    (transaction.categoryId != null && transaction.categoryId in categories)
+
+                // Type filter
+                val matchesType = type == null || 
+                    transaction.type.equals(type, ignoreCase = true)
+
+                // Amount range filter
+                val matchesMinAmount = minAmount == null || minAmount.isBlank() || run {
+                    try {
+                        transaction.amount >= minAmount.toDouble()
+                    } catch (e: NumberFormatException) {
+                        true // If invalid, don't filter out
+                    }
+                }
+
+                val matchesMaxAmount = maxAmount == null || maxAmount.isBlank() || run {
+                    try {
+                        transaction.amount <= maxAmount.toDouble()
+                    } catch (e: NumberFormatException) {
+                        true // If invalid, don't filter out
+                    }
+                }
+
+                matchesSearch && matchesDateRange && matchesCategory && matchesType && matchesMinAmount && matchesMaxAmount
             }
-
-            // Category filter
-            val matchesCategory = categories.isEmpty() || 
-                (transaction.categoryId != null && transaction.categoryId in categories)
-
-            // Type filter
-            val matchesType = type == null || 
-                transaction.type.equals(type, ignoreCase = true)
-
-            matchesSearch && matchesDateRange && matchesCategory && matchesType
         }
-    }
+    }.flatMapLatest { it }
 
     // TRANSFORMING THE FLOW DIRECTLY
     val uiState: StateFlow<HomeUiState> = filteredTransactions
@@ -137,10 +162,17 @@ class HomeViewModel @Inject constructor(
         filterType.value = type
     }
 
+    fun updateFilterAmountRange(minAmount: String?, maxAmount: String?) {
+        filterMinAmount.value = minAmount
+        filterMaxAmount.value = maxAmount
+    }
+
     fun resetFilters() {
         searchQuery.value = ""
         filterDateRange.value = null
         filterCategories.value = emptyList()
         filterType.value = null
+        filterMinAmount.value = null
+        filterMaxAmount.value = null
     }
 }

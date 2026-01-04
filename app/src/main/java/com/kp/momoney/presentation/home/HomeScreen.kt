@@ -65,6 +65,8 @@ fun HomeScreen(
     val filterDateRange by viewModel.filterDateRange.collectAsState()
     val filterCategories by viewModel.filterCategories.collectAsState()
     val filterType by viewModel.filterType.collectAsState()
+    val filterMinAmount by viewModel.filterMinAmount.collectAsState()
+    val filterMaxAmount by viewModel.filterMaxAmount.collectAsState()
     
     var showFilterSheet by remember { mutableStateOf(false) }
 
@@ -152,10 +154,11 @@ fun HomeScreen(
         if (showFilterSheet) {
             FilterSheet(
                 onDismiss = { showFilterSheet = false },
-                onApply = { startDate, endDate, type, categories ->
+                onApply = { startDate, endDate, type, categories, minAmount, maxAmount ->
                     viewModel.updateFilterDateRange(startDate, endDate)
                     viewModel.updateFilterType(type)
                     viewModel.updateFilterCategories(categories)
+                    viewModel.updateFilterAmountRange(minAmount, maxAmount)
                 },
                 onReset = {
                     viewModel.resetFilters()
@@ -163,7 +166,9 @@ fun HomeScreen(
                 categoryRepository = viewModel.categoryRepository,
                 currentDateRange = filterDateRange,
                 currentType = filterType,
-                currentCategories = filterCategories
+                currentCategories = filterCategories,
+                currentMinAmount = filterMinAmount,
+                currentMaxAmount = filterMaxAmount
             )
         }
     }

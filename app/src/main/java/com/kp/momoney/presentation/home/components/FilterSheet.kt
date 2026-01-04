@@ -12,10 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -25,6 +26,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -34,12 +37,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.util.getIconByName
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,21 +54,28 @@ fun FilterSheet(
         startDate: Long?,
         endDate: Long?,
         selectedType: String?,
-        selectedCategories: List<Int>
+        selectedCategories: List<Int>,
+        minAmount: String?,
+        maxAmount: String?
     ) -> Unit,
     onReset: () -> Unit,
     categoryRepository: CategoryRepository,
     currentDateRange: Pair<Long, Long>?,
     currentType: String?,
-    currentCategories: List<Int>
+    currentCategories: List<Int>,
+    currentMinAmount: String?,
+    currentMaxAmount: String?
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scrollState = rememberScrollState()
     
     // Local state for filters
     var startDate by remember { mutableStateOf<Long?>(currentDateRange?.first) }
     var endDate by remember { mutableStateOf<Long?>(currentDateRange?.second) }
     var selectedType by remember { mutableStateOf<String?>(currentType) }
     var selectedCategories by remember { mutableStateOf<List<Int>>(currentCategories) }
+    var minAmount by remember { mutableStateOf<String>(currentMinAmount ?: "") }
+    var maxAmount by remember { mutableStateOf<String>(currentMaxAmount ?: "") }
     
     // Load categories
     val categories by categoryRepository.getAllCategories().collectAsState(initial = emptyList())
@@ -72,6 +83,14 @@ fun FilterSheet(
     // Date picker states
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
+    
+    // Date picker states for Material 3 DatePicker
+    val startDatePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = startDate
+    )
+    val endDatePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = endDate
+    )
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -81,6 +100,7 @@ fun FilterSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -122,25 +142,91 @@ fun FilterSheet(
                 )
             }
             
+            // Amount Range Section
+            Text(
+                text = "Amount Range",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = minAmount,
+                    onValueChange = { minAmount = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Min Amount") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
+                )
+                
+                OutlinedTextField(
+                    value = maxAmount,
+                    onValueChange = { maxAmount = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Max Amount") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
+                )
+            }
+            
             // Date Pickers
             if (showStartDatePicker) {
                 DatePickerDialog(
-                    onDateSelected = { date ->
-                        startDate = date
-                        showStartDatePicker = false
+                    onDismissRequest = { showStartDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                startDatePickerState.selectedDateMillis?.let {
+                                    startDate = it
+                                }
+                                showStartDatePicker = false
+                            }
+                        ) {
+                            Text("OK")
+                        }
                     },
-                    onDismiss = { showStartDatePicker = false }
-                )
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showStartDatePicker = false }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                ) {
+                    DatePicker(state = startDatePickerState)
+                }
             }
             
             if (showEndDatePicker) {
                 DatePickerDialog(
-                    onDateSelected = { date ->
-                        endDate = date
-                        showEndDatePicker = false
+                    onDismissRequest = { showEndDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                endDatePickerState.selectedDateMillis?.let {
+                                    endDate = it
+                                }
+                                showEndDatePicker = false
+                            }
+                        ) {
+                            Text("OK")
+                        }
                     },
-                    onDismiss = { showEndDatePicker = false }
-                )
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showEndDatePicker = false }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                ) {
+                    DatePicker(state = endDatePickerState)
+                }
             }
             
             // Transaction Type Section
@@ -237,6 +323,8 @@ fun FilterSheet(
                         endDate = null
                         selectedType = null
                         selectedCategories = emptyList()
+                        minAmount = ""
+                        maxAmount = ""
                         onReset()
                     },
                     modifier = Modifier.weight(1f)
@@ -246,7 +334,14 @@ fun FilterSheet(
                 
                 Button(
                     onClick = {
-                        onApply(startDate, endDate, selectedType, selectedCategories)
+                        onApply(
+                            startDate,
+                            endDate,
+                            selectedType,
+                            selectedCategories,
+                            minAmount.takeIf { it.isNotBlank() },
+                            maxAmount.takeIf { it.isNotBlank() }
+                        )
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f)
@@ -260,83 +355,8 @@ fun FilterSheet(
     }
 }
 
-@Composable
-private fun DatePickerDialog(
-    onDateSelected: (Long) -> Unit,
-    onDismiss: () -> Unit
-) {
-    // Simple date picker - for production, use Material3's DatePickerDialog
-    // or a library like date-time-picker
-    val calendar = Calendar.getInstance()
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Select Date",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Simple date selection buttons
-            // Note: For a full date picker, use Material3 DatePickerDialog or a date picker library
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = {
-                        onDateSelected(calendar.timeInMillis)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Today")
-                }
-                
-                Button(
-                    onClick = {
-                        calendar.add(Calendar.DAY_OF_MONTH, -7)
-                        onDateSelected(calendar.timeInMillis)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("7 Days Ago")
-                }
-                
-                Button(
-                    onClick = {
-                        calendar.add(Calendar.MONTH, -1)
-                        onDateSelected(calendar.timeInMillis)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("1 Month Ago")
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedButton(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Cancel")
-            }
-        }
-    }
-}
-
 private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return sdf.format(java.util.Date(timestamp))
 }
 
