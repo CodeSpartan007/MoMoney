@@ -11,7 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -65,6 +66,9 @@ fun AddTransactionScreen(
     val transactionDate by viewModel.transactionDate.collectAsState()
 
     var isCategoryExpanded by remember { mutableStateOf(false) }
+    
+    // Date picker with interaction source
+    val dateInteractionSource = remember { MutableInteractionSource() }
     var openDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(event) {
@@ -136,20 +140,30 @@ fun AddTransactionScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Date picker interaction detection
+                    LaunchedEffect(dateInteractionSource) {
+                        dateInteractionSource.interactions.collect { interaction ->
+                            if (interaction is PressInteraction.Release) {
+                                openDatePicker = true
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = formatDate(transactionDate),
                         onValueChange = {},
-                        readOnly = true,
+                        readOnly = true, // CRITICAL: Prevents keyboard
                         label = { Text("Date") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { openDatePicker = true },
                         trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = "Select Date"
-                            )
+                            IconButton(onClick = { openDatePicker = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Select Date"
+                                )
+                            }
                         },
+                        interactionSource = dateInteractionSource,
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
 
