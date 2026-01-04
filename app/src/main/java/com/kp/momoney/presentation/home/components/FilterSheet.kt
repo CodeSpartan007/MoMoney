@@ -1,6 +1,8 @@
 package com.kp.momoney.presentation.home.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,22 +16,26 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,17 +86,20 @@ fun FilterSheet(
     // Load categories
     val categories by categoryRepository.getAllCategories().collectAsState(initial = emptyList())
     
-    // Date picker states
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
+    // Date range picker with interaction source
+    val dateInteractionSource = remember { MutableInteractionSource() }
+    var showDatePicker by remember { mutableStateOf(false) }
     
-    // Date picker states for Material 3 DatePicker
-    val startDatePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = startDate
-    )
-    val endDatePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = endDate
-    )
+    // Format date range string for display
+    val dateRangeString = remember(startDate, endDate) {
+        val start = startDate
+        val end = endDate
+        if (start != null && end != null) {
+            formatDateRange(start, end)
+        } else {
+            "All Time"
+        }
+    }
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -117,30 +126,28 @@ fun FilterSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = startDate?.let { formatDate(it) } ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { showStartDatePicker = true },
-                    label = { Text("Start Date") }
-                )
-                
-                OutlinedTextField(
-                    value = endDate?.let { formatDate(it) } ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { showEndDatePicker = true },
-                    label = { Text("End Date") }
-                )
+            // Date Input Field with interaction source
+            LaunchedEffect(dateInteractionSource) {
+                dateInteractionSource.interactions.collect { interaction ->
+                    if (interaction is PressInteraction.Release) {
+                        showDatePicker = true
+                    }
+                }
             }
+            
+            OutlinedTextField(
+                value = dateRangeString,
+                onValueChange = { },
+                label = { Text("Select Date Range") },
+                readOnly = true, // CRITICAL: Prevents keyboard
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.DateRange, contentDescription = "Select Date")
+                    }
+                },
+                interactionSource = dateInteractionSource,
+                modifier = Modifier.fillMaxWidth()
+            )
             
             // Amount Range Section
             Text(
@@ -174,60 +181,6 @@ fun FilterSheet(
                 )
             }
             
-            // Date Pickers
-            if (showStartDatePicker) {
-                DatePickerDialog(
-                    onDismissRequest = { showStartDatePicker = false },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                startDatePickerState.selectedDateMillis?.let {
-                                    startDate = it
-                                }
-                                showStartDatePicker = false
-                            }
-                        ) {
-                            Text("OK")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showStartDatePicker = false }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                ) {
-                    DatePicker(state = startDatePickerState)
-                }
-            }
-            
-            if (showEndDatePicker) {
-                DatePickerDialog(
-                    onDismissRequest = { showEndDatePicker = false },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                endDatePickerState.selectedDateMillis?.let {
-                                    endDate = it
-                                }
-                                showEndDatePicker = false
-                            }
-                        ) {
-                            Text("OK")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showEndDatePicker = false }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                ) {
-                    DatePicker(state = endDatePickerState)
-                }
-            }
             
             // Transaction Type Section
             Text(
@@ -353,10 +306,58 @@ fun FilterSheet(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+    
+    // Date Range Picker Dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = startDate,
+            initialSelectedEndDateMillis = endDate
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDatePicker = false
+                        // Update state here
+                        val start = datePickerState.selectedStartDateMillis
+                        val end = datePickerState.selectedEndDateMillis
+                        if (start != null && end != null) {
+                            startDate = start
+                            endDate = end
+                        } else {
+                            startDate = null
+                            endDate = null
+                        }
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DateRangePicker(
+                state = datePickerState,
+                modifier = Modifier.height(500.dp) // Sometimes needed to prevent layout clip
+            )
+        }
+    }
 }
 
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return sdf.format(java.util.Date(timestamp))
+}
+
+private fun formatDateRange(startDate: Long, endDate: Long): String {
+    val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+    val startFormatted = dateFormat.format(java.util.Date(startDate))
+    val endFormatted = dateFormat.format(java.util.Date(endDate))
+    return "$startFormatted - $endFormatted"
 }
 
