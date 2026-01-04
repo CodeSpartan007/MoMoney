@@ -4,11 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.BudgetRepository
+import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -24,8 +28,15 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
-    private val budgetRepository: BudgetRepository
+    private val budgetRepository: BudgetRepository,
+    val categoryRepository: CategoryRepository
 ) : ViewModel() {
+
+    // Search and Filter State
+    val searchQuery = MutableStateFlow("")
+    val filterDateRange = MutableStateFlow<Pair<Long, Long>?>(null)
+    val filterCategories = MutableStateFlow<List<Int>>(emptyList())
+    val filterType = MutableStateFlow<String?>(null)
 
     init {
         // Sync data from Firestore when ViewModel is created
@@ -41,8 +52,43 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    // Get all transactions flow
+    private val allTransactions = transactionRepository.getAllTransactions()
+
+    // Filtered transactions flow that applies all filters
+    private val filteredTransactions = combine(
+        allTransactions,
+        searchQuery,
+        filterDateRange,
+        filterCategories,
+        filterType
+    ) { transactions, query, dateRange, categories, type ->
+        transactions.filter { transaction ->
+            // Search filter
+            val matchesSearch = query.isEmpty() || 
+                transaction.note.contains(query, ignoreCase = true) ||
+                transaction.categoryName.contains(query, ignoreCase = true)
+
+            // Date range filter
+            val matchesDateRange = dateRange == null || run {
+                val transactionTime = transaction.date.time
+                transactionTime >= dateRange.first && transactionTime <= dateRange.second
+            }
+
+            // Category filter
+            val matchesCategory = categories.isEmpty() || 
+                (transaction.categoryId != null && transaction.categoryId in categories)
+
+            // Type filter
+            val matchesType = type == null || 
+                transaction.type.equals(type, ignoreCase = true)
+
+            matchesSearch && matchesDateRange && matchesCategory && matchesType
+        }
+    }
+
     // TRANSFORMING THE FLOW DIRECTLY
-    val uiState: StateFlow<HomeUiState> = transactionRepository.getAllTransactions()
+    val uiState: StateFlow<HomeUiState> = filteredTransactions
         .map { transactions ->
             val income = transactions
                 .filter { it.type.equals("Income", ignoreCase = true) }
@@ -69,4 +115,32 @@ class HomeViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000), // <--- THE MAGIC FIX
             initialValue = HomeUiState(isLoading = true)
         )
+
+    // Functions to update filters
+    fun updateSearchQuery(query: String) {
+        searchQuery.value = query
+    }
+
+    fun updateFilterDateRange(startDate: Long?, endDate: Long?) {
+        filterDateRange.value = if (startDate != null && endDate != null) {
+            Pair(startDate, endDate)
+        } else {
+            null
+        }
+    }
+
+    fun updateFilterCategories(categories: List<Int>) {
+        filterCategories.value = categories
+    }
+
+    fun updateFilterType(type: String?) {
+        filterType.value = type
+    }
+
+    fun resetFilters() {
+        searchQuery.value = ""
+        filterDateRange.value = null
+        filterCategories.value = emptyList()
+        filterType.value = null
+    }
 }

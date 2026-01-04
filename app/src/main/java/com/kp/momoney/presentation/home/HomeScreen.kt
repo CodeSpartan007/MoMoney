@@ -33,6 +33,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +49,8 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import com.kp.momoney.util.toCurrency
 import com.kp.momoney.R
+import com.kp.momoney.presentation.home.components.SearchFilterBar
+import com.kp.momoney.presentation.home.components.FilterSheet
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +61,12 @@ fun HomeScreen(
 ) {
     // FIX: Use collectAsState() to listen for real-time updates
     val uiState by viewModel.uiState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val filterDateRange by viewModel.filterDateRange.collectAsState()
+    val filterCategories by viewModel.filterCategories.collectAsState()
+    val filterType by viewModel.filterType.collectAsState()
+    
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -104,6 +115,14 @@ fun HomeScreen(
                         totalExpense = uiState.totalExpense
                     )
                 }
+                
+                item {
+                    SearchFilterBar(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                        onFilterClick = { showFilterSheet = true }
+                    )
+                }
 
                 if (uiState.transactions.isEmpty()) {
                     item {
@@ -127,6 +146,25 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+        
+        // Filter Sheet
+        if (showFilterSheet) {
+            FilterSheet(
+                onDismiss = { showFilterSheet = false },
+                onApply = { startDate, endDate, type, categories ->
+                    viewModel.updateFilterDateRange(startDate, endDate)
+                    viewModel.updateFilterType(type)
+                    viewModel.updateFilterCategories(categories)
+                },
+                onReset = {
+                    viewModel.resetFilters()
+                },
+                categoryRepository = viewModel.categoryRepository,
+                currentDateRange = filterDateRange,
+                currentType = filterType,
+                currentCategories = filterCategories
+            )
         }
     }
 }

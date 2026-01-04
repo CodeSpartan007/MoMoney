@@ -8,6 +8,7 @@ data class Transaction(
     val date: Date,
     val note: String,
     val type: String,
+    val categoryId: Int?,
     val categoryName: String,
     val categoryColor: String,
     val categoryIcon: String

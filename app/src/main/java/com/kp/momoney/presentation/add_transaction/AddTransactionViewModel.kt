@@ -93,6 +93,7 @@ class AddTransactionViewModel @Inject constructor(
             date = Date(),
             note = noteValue,
             type = transactionType,
+            categoryId = category.id,
             categoryName = category.name,
             categoryColor = category.color,
             categoryIcon = category.icon

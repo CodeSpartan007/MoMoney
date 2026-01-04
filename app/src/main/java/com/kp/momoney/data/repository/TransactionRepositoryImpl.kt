@@ -111,6 +111,7 @@ class TransactionRepositoryImpl @Inject constructor(
             date = Date(transaction.date),
             note = transaction.note.orEmpty(),
             type = transaction.type,
+            categoryId = transaction.categoryId,
             categoryName = category?.name.orEmpty(),
             categoryColor = category?.colorHex.orEmpty(),
             categoryIcon = category?.iconName.orEmpty()
