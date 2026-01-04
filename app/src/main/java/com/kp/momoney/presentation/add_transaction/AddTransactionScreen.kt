@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.SelectableDates
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -251,7 +252,13 @@ fun AddTransactionScreen(
     // Date Picker Dialog
     if (openDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = transactionDate
+            initialSelectedDateMillis = transactionDate,
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    // Disable future dates - only allow dates up to and including today
+                    return utcTimeMillis <= System.currentTimeMillis()
+                }
+            }
         )
         
         DatePickerDialog(
