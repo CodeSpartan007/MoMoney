@@ -30,6 +30,7 @@ class AddTransactionViewModel @Inject constructor(
     val amount = MutableStateFlow("")
     val note = MutableStateFlow("")
     val selectedCategory = MutableStateFlow<Category?>(null)
+    val transactionDate = MutableStateFlow(System.currentTimeMillis())
     
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
@@ -90,7 +91,7 @@ class AddTransactionViewModel @Inject constructor(
         val transaction = Transaction(
             id = 0, // Will be auto-generated
             amount = amountDouble,
-            date = Date(),
+            date = Date(transactionDate.value),
             note = noteValue,
             type = transactionType,
             categoryId = category.id,
@@ -115,6 +116,7 @@ class AddTransactionViewModel @Inject constructor(
                 amount.value = ""
                 note.value = ""
                 selectedCategory.value = null
+                transactionDate.value = System.currentTimeMillis()
             } catch (e: Exception) {
                 _event.value = AddTransactionEvent.Error("Failed to save transaction: ${e.message}")
             } finally {
@@ -125,6 +127,10 @@ class AddTransactionViewModel @Inject constructor(
     
     fun clearEvent() {
         _event.value = null
+    }
+    
+    fun onDateChange(newDate: Long) {
+        transactionDate.value = newDate
     }
 }
 

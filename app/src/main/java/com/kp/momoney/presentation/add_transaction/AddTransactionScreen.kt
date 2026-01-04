@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -26,7 +30,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.R
 import com.kp.momoney.presentation.common.AppLoadingAnimation
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,8 +62,10 @@ fun AddTransactionScreen(
     val categories by viewModel.categories.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val event by viewModel.event.collectAsState()
+    val transactionDate by viewModel.transactionDate.collectAsState()
 
     var isCategoryExpanded by remember { mutableStateOf(false) }
+    var openDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(event) {
         when (event) {
@@ -121,6 +131,25 @@ fun AddTransactionScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
+                        enabled = !isLoading
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = formatDate(transactionDate),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Date") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { openDatePicker = true },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Select Date"
+                            )
+                        },
                         enabled = !isLoading
                     )
 
@@ -203,4 +232,41 @@ fun AddTransactionScreen(
             }
         }
     }
+    
+    // Date Picker Dialog
+    if (openDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = transactionDate
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { openDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { dateMillis ->
+                            viewModel.onDateChange(dateMillis)
+                        }
+                        openDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { openDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState
+            )
+        }
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    return sdf.format(java.util.Date(timestamp))
 }
