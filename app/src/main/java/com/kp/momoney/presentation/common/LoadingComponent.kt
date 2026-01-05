@@ -1,10 +1,16 @@
 package com.kp.momoney.presentation.common
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -48,6 +54,31 @@ fun AppLoadingAnimation(
         CircularProgressIndicator(
             modifier = modifier.size(200.dp)
         )
+    }
+}
+
+/**
+ * Reusable fullscreen loading overlay with semi-transparent background and Lottie animation.
+ * Blocks user interaction while loading.
+ *
+ * @param isLoading Whether to show the loading overlay
+ * @param modifier Modifier to be applied to the overlay
+ */
+@Composable
+fun LoadingOverlay(
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(enabled = false) {}, // Block touches
+            contentAlignment = Alignment.Center
+        ) {
+            AppLoadingAnimation()
+        }
     }
 }
 

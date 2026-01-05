@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.repository.CategoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,6 +33,10 @@ class CategoryViewModel @Inject constructor(
     // Event state for feedback
     private val _event = MutableStateFlow<CategoryEvent?>(null)
     val event: StateFlow<CategoryEvent?> = _event.asStateFlow()
+
+    // Loading state
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     // Get all categories and filter to show only user categories
     val userCategories: StateFlow<List<Category>> = categoryRepository.getAllCategories()
@@ -62,20 +67,28 @@ class CategoryViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                _isLoading.value = true
+                
                 categoryRepository.addUserCategory(
                     name = name,
                     type = categoryType.value,
                     color = selectedColor.value
                 )
                 
+                // Delay to allow user to enjoy the animation while background sync happens
+                delay(3000)
+                
                 // Reset form
                 categoryName.value = ""
                 categoryType.value = "Expense"
                 selectedColor.value = "FF9800"
                 
+                _isLoading.value = false
+                
                 // Show success event
                 _event.value = CategoryEvent.Success
             } catch (e: Exception) {
+                _isLoading.value = false
                 _event.value = CategoryEvent.Error(e.message ?: "Failed to create category")
             }
         }

@@ -3,6 +3,7 @@ package com.kp.momoney.presentation.auth
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.collectAsState
 import com.kp.momoney.R
+import com.kp.momoney.presentation.common.LoadingOverlay
 
 @Composable
 fun LoginScreen(
@@ -55,13 +57,14 @@ fun LoginScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         Image(
             painter = painterResource(id = R.drawable.ic_logo_mini),
             contentDescription = "App Logo",
@@ -146,6 +149,10 @@ fun LoginScreen(
             modifier = Modifier.clickable(onClick = onNavigateToRegister),
             color = MaterialTheme.colorScheme.primary
         )
+        }
+        
+        // Loading Overlay
+        LoadingOverlay(isLoading = authState is AuthState.Loading)
     }
 }
 

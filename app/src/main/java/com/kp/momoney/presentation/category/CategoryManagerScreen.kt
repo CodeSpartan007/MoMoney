@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.R
 import com.kp.momoney.domain.model.Category
+import com.kp.momoney.presentation.common.LoadingOverlay
 import com.kp.momoney.util.getIconByName
 import java.util.Locale
 
@@ -77,6 +78,7 @@ fun CategoryManagerScreen(
     val selectedColor by viewModel.selectedColor.collectAsState()
     val userCategories by viewModel.userCategories.collectAsState()
     val event by viewModel.event.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -125,13 +127,14 @@ fun CategoryManagerScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Creation Section
             item {
                 Card(
@@ -219,7 +222,7 @@ fun CategoryManagerScreen(
                         Button(
                             onClick = { viewModel.createCategory() },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = categoryName.trim().isNotEmpty()
+                            enabled = categoryName.trim().isNotEmpty() && !isLoading
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Build,
@@ -264,6 +267,10 @@ fun CategoryManagerScreen(
                     CategoryItem(category = category)
                 }
             }
+            }
+            
+            // Loading Overlay
+            LoadingOverlay(isLoading = isLoading)
         }
     }
 }

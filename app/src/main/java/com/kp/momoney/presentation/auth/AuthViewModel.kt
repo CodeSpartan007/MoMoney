@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
 import com.kp.momoney.domain.repository.AuthRepository
+import com.kp.momoney.domain.repository.CategoryRepository
+import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +24,9 @@ sealed class AuthState {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val transactionRepository: TransactionRepository,
+    private val categoryRepository: CategoryRepository
 ) : ViewModel() {
 
     private val _email = MutableStateFlow("")
@@ -62,7 +67,21 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             authRepository.login(email, password).collect { result ->
                 result.fold(
-                    onSuccess = { user -> _authState.value = AuthState.Success(user) },
+                    onSuccess = { user ->
+                        // Sync user data (Transactions + Categories) from Firestore
+                        try {
+                            transactionRepository.syncTransactions()
+                            categoryRepository.syncCategories()
+                            
+                            // Delay to simulate heavy download and allow user to enjoy the animation
+                            delay(3000)
+                            
+                            _authState.value = AuthState.Success(user)
+                        } catch (e: Exception) {
+                            // Even if sync fails, login is successful
+                            _authState.value = AuthState.Success(user)
+                        }
+                    },
                     onFailure = { error ->
                         _authState.value = AuthState.Error(error.message ?: "Login failed")
                     }
