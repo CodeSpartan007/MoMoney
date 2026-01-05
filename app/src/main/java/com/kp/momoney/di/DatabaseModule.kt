@@ -30,34 +30,63 @@ object DatabaseModule {
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    // Check if categories table is empty and seed default categories
-                    val cursor = db.query("SELECT COUNT(*) FROM categories")
-                    val count = if (cursor.moveToFirst()) {
-                        cursor.getInt(0)
-                    } else {
-                        0
-                    }
-                    cursor.close()
+                    seedDefaultCategories(db)
+                }
+                
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    // Also seed on open to ensure defaults exist even if DB was created before
+                    seedDefaultCategories(db)
+                }
+                
+                /**
+                 * Seeds default system categories using upsert logic (Insert or Ignore).
+                 * This ensures that even if the database isn't empty, missing defaults are restored.
+                 * All default categories have userId = NULL to mark them as system categories.
+                 */
+                private fun seedDefaultCategories(db: SupportSQLiteDatabase) {
+                    // Define default categories with their properties
+                    // Format: [name, type, icon_name, color_hex, firestore_id]
+                    val defaultCategories = listOf(
+                        // Salary (Income, Green)
+                        arrayOf("Salary", "Income", "salary", "4CAF50", java.util.UUID.randomUUID().toString()),
+                        // Food (Expense, Orange)
+                        arrayOf("Food", "Expense", "food", "FF9800", java.util.UUID.randomUUID().toString()),
+                        // Transport (Expense, Blue)
+                        arrayOf("Transport", "Expense", "transport", "2196F3", java.util.UUID.randomUUID().toString()),
+                        // Rent (Expense, Red)
+                        arrayOf("Rent", "Expense", "rent", "F44336", java.util.UUID.randomUUID().toString()),
+                        // Entertainment (Expense, Purple)
+                        arrayOf("Entertainment", "Expense", "entertainment", "9C27B0", java.util.UUID.randomUUID().toString())
+                    )
                     
-                    if (count == 0) {
-                        // Insert default categories with userId = NULL (system defaults)
-                        // Using parameterized queries would be better, but execSQL with proper escaping works here
-                        val foodId = java.util.UUID.randomUUID().toString()
-                        val rentId = java.util.UUID.randomUUID().toString()
-                        val salaryId = java.util.UUID.randomUUID().toString()
+                    // Upsert logic: Check if category exists, insert only if it doesn't
+                    defaultCategories.forEach { category ->
+                        val name = category[0] as String
+                        val type = category[1] as String
+                        val iconName = category[2] as String
+                        val colorHex = category[3] as String
+                        val firestoreId = category[4] as String
                         
-                        db.execSQL(
-                            "INSERT INTO categories (name, type, icon_name, color_hex, user_id, firestore_id) VALUES (?, ?, ?, ?, ?, ?)",
-                            arrayOf("Food", "Expense", "food", "FF9800", null, foodId)
+                        // Check if this system category (name + user_id IS NULL) already exists
+                        val cursor = db.query(
+                            "SELECT COUNT(*) FROM categories WHERE name = ? AND user_id IS NULL",
+                            arrayOf(name)
                         )
-                        db.execSQL(
-                            "INSERT INTO categories (name, type, icon_name, color_hex, user_id, firestore_id) VALUES (?, ?, ?, ?, ?, ?)",
-                            arrayOf("Rent", "Expense", "rent", "F44336", null, rentId)
-                        )
-                        db.execSQL(
-                            "INSERT INTO categories (name, type, icon_name, color_hex, user_id, firestore_id) VALUES (?, ?, ?, ?, ?, ?)",
-                            arrayOf("Salary", "Income", "salary", "4CAF50", null, salaryId)
-                        )
+                        val exists = if (cursor.moveToFirst()) {
+                            cursor.getInt(0) > 0
+                        } else {
+                            false
+                        }
+                        cursor.close()
+                        
+                        // Insert only if it doesn't exist
+                        if (!exists) {
+                            db.execSQL(
+                                "INSERT INTO categories (name, type, icon_name, color_hex, user_id, firestore_id) VALUES (?, ?, ?, ?, ?, ?)",
+                                arrayOf(name, type, iconName, colorHex, null, firestoreId)
+                            )
+                        }
                     }
                 }
             })
