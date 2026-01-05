@@ -25,7 +25,10 @@ class CategoryRepositoryImpl @Inject constructor(
         get() = auth.currentUser?.uid
     
     override fun getAllCategories(): Flow<List<Category>> {
-        return categoryDao.getAllCategories(currentUserId).map { categories ->
+        // Pass empty string for unauthenticated users - they will only see default categories (userId IS NULL)
+        // Authenticated users will see default categories + their own (userId IS NULL OR userId = currentUserId)
+        val userId = currentUserId ?: ""
+        return categoryDao.getAllCategories(userId).map { categories ->
             categories.map { it.toDomain() }
         }
     }

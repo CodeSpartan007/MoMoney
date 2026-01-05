@@ -12,8 +12,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CategoryDao {
     
+    /**
+     * Gets all categories that are either system defaults (userId IS NULL) 
+     * or belong to the specified user.
+     * This ensures users see Defaults + Their Own, but NOT other people's categories.
+     */
     @Query("SELECT * FROM categories WHERE user_id IS NULL OR user_id = :currentUserId ORDER BY name ASC")
-    fun getAllCategories(currentUserId: String?): Flow<List<CategoryEntity>>
+    fun getAllCategories(currentUserId: String): Flow<List<CategoryEntity>>
+    
+    /**
+     * Gets the count of all categories in the table.
+     * Used to check if the table is empty for seeding default categories.
+     */
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun getCategoryCount(): Int
     
     @Query("SELECT * FROM categories WHERE id = :categoryId")
     suspend fun getCategoryById(categoryId: Int): CategoryEntity?
