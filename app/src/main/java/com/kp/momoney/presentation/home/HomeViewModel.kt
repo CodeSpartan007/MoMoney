@@ -52,9 +52,10 @@ class HomeViewModel @Inject constructor(
         // Sync data from Firestore when ViewModel is created
         viewModelScope.launch {
             try {
-                // Sync transactions first, then budgets
+                // Sync transactions, budgets, and categories on startup
                 transactionRepository.syncTransactions()
                 budgetRepository.syncBudgets()
+                categoryRepository.syncCategories()
             } catch (e: Exception) {
                 // Log error but don't crash - app can work offline
                 e.printStackTrace()
