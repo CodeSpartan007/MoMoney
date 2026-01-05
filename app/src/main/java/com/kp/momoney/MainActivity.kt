@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -77,7 +78,8 @@ private fun MainScreen(
     val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
         Screen.Reports.route,
-        Screen.Budget.route
+        Screen.Budget.route,
+        Screen.Categories.route
     )
 
     Scaffold(
@@ -102,7 +104,8 @@ private fun MainScreen(
                     val destinations = listOf(
                         Screen.Home to Pair("Home", Icons.Default.Home),
                         Screen.Budget to Pair("Budgets", Icons.Default.DateRange),
-                        Screen.Reports to Pair("Reports", Icons.AutoMirrored.Filled.List)
+                        Screen.Reports to Pair("Reports", Icons.AutoMirrored.Filled.List),
+                        Screen.Categories to Pair("Categories", Icons.Default.Label)
                     )
 
                     destinations.forEach { (screen, labelIcon) ->

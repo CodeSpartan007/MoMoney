@@ -15,6 +15,7 @@ import com.kp.momoney.presentation.auth.LoginScreen
 import com.kp.momoney.presentation.auth.RegisterScreen
 import com.kp.momoney.presentation.add_transaction.AddTransactionScreen
 import com.kp.momoney.presentation.budget.BudgetScreen
+import com.kp.momoney.presentation.category.CategoryManagerScreen
 import com.kp.momoney.presentation.home.HomeScreen
 import com.kp.momoney.presentation.reports.ReportsScreen
 import com.kp.momoney.presentation.settings.SettingsScreen
@@ -119,6 +120,10 @@ fun AppNavHost(
         
         composable(Screen.Reports.route) {
             ReportsScreen()
+        }
+        
+        composable(Screen.Categories.route) {
+            CategoryManagerScreen()
         }
         
         composable(Screen.Settings.route) {
