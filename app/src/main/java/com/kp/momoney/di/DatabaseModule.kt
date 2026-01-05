@@ -20,6 +20,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
+import java.util.UUID
 import javax.inject.Singleton
 
 @Module
@@ -46,7 +47,7 @@ object DatabaseModule {
         // Seed database after it's built if it's empty
         val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         applicationScope.launch {
-            val categories = database.categoryDao().getAllCategories().first()
+            val categories = database.categoryDao().getAllCategories(null).first()
             if (categories.isEmpty()) {
                 seedDatabase(database.categoryDao())
             }
@@ -61,25 +62,33 @@ object DatabaseModule {
                 name = "Salary",
                 type = "Income",
                 colorHex = "4CAF50", // Green
-                iconName = "salary"
+                iconName = "salary",
+                userId = null, // System default
+                firestoreId = UUID.randomUUID().toString()
             ),
             CategoryEntity(
                 name = "Food",
                 type = "Expense",
                 colorHex = "FF9800", // Orange
-                iconName = "food"
+                iconName = "food",
+                userId = null, // System default
+                firestoreId = UUID.randomUUID().toString()
             ),
             CategoryEntity(
                 name = "Transport",
                 type = "Expense",
                 colorHex = "2196F3", // Blue
-                iconName = "transport"
+                iconName = "transport",
+                userId = null, // System default
+                firestoreId = UUID.randomUUID().toString()
             ),
             CategoryEntity(
                 name = "Rent",
                 type = "Expense",
                 colorHex = "F44336", // Red
-                iconName = "rent"
+                iconName = "rent",
+                userId = null, // System default
+                firestoreId = UUID.randomUUID().toString()
             )
         )
         
