@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.R
 import com.kp.momoney.domain.model.Category
+import com.kp.momoney.util.getIconByName
 import java.util.Locale
 
 // Preset colors for category selection
@@ -341,7 +342,7 @@ private fun CategoryItem(
             
             // Icon
             Icon(
-                imageVector = Icons.Default.Build,
+                imageVector = getIconByName(category.icon),
                 contentDescription = null,
                 tint = color,
                 modifier = Modifier.size(24.dp)

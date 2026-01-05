@@ -57,7 +57,7 @@ object DatabaseModule {
                         // Rent (Expense, Red)
                         arrayOf("Rent", "Expense", "rent", "F44336", java.util.UUID.randomUUID().toString()),
                         // Entertainment (Expense, Purple)
-                        arrayOf("Entertainment", "Expense", "entertainment", "9C27B0", java.util.UUID.randomUUID().toString())
+                        arrayOf("Entertainment", "Expense", "beer", "9C27B0", java.util.UUID.randomUUID().toString())
                     )
                     
                     // Upsert logic: Check if category exists, insert only if it doesn't
