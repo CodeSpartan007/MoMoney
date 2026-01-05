@@ -45,14 +45,15 @@ class CategoryRepositoryImpl @Inject constructor(
             type = type,
             colorHex = color,
             iconName = "spanner", // Hardcoded as per requirements
-            userId = userId,
+            userId = userId, // Set to current user's UID
             firestoreId = UUID.randomUUID().toString()
         )
         
-        // Save to Room first
-        val roomId = categoryDao.insertCategory(category)
+        // Step 1: Save to Room immediately (offline-first approach)
+        categoryDao.insertCategory(category)
+        Log.d("CategoryRepo", "Category saved to Room: ${category.name} (firestoreId: ${category.firestoreId})")
         
-        // Sync to Firestore
+        // Step 2: Save to Firestore users/{uid}/categories immediately
         try {
             val firestoreMap = category.toFirestoreMap()
             firestore.collection("users")
@@ -65,6 +66,7 @@ class CategoryRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e("CategoryRepo", "Failed to sync category to Firestore", e)
             // Continue even if Firestore sync fails - local data is saved
+            // The category will be synced on next sync operation
         }
     }
     
@@ -75,31 +77,62 @@ class CategoryRepositoryImpl @Inject constructor(
         }
         
         try {
-            Log.d("CategoryRepo", "Starting category sync from Firestore")
+            Log.d("CategoryRepo", "Starting category sync from Firestore for user: $userId")
+            
+            // Step 1: Query Firestore users/{uid}/categories
             val snapshot = firestore.collection("users")
                 .document(userId)
                 .collection("categories")
                 .get()
                 .await()
             
+            Log.d("CategoryRepo", "Fetched ${snapshot.documents.size} category documents from Firestore")
+            
+            // Step 2: Loop through documents
+            // Step 3: Map to CategoryEntity, ensuring userId is set to current uid
             val firestoreCategories = snapshot.documents.mapNotNull { document ->
-                document.toCategoryEntity()
+                try {
+                    val firestoreId = document.getString("firestoreId") ?: document.id
+                    val name = document.getString("name") ?: return@mapNotNull null
+                    val type = document.getString("type") ?: return@mapNotNull null
+                    val colorHex = document.getString("colorHex") ?: return@mapNotNull null
+                    val iconName = document.getString("iconName") ?: "spanner"
+                    
+                    // Step 3: Ensure userId is set to the current uid
+                    CategoryEntity(
+                        id = 0, // Room will auto-generate
+                        firestoreId = firestoreId,
+                        userId = userId, // Always set to current user's UID
+                        name = name,
+                        type = type,
+                        iconName = iconName,
+                        colorHex = colorHex
+                    )
+                } catch (e: Exception) {
+                    Log.e("CategoryRepo", "Error mapping category document ${document.id}", e)
+                    null
+                }
             }
             
-            Log.d("CategoryRepo", "Fetched ${firestoreCategories.size} categories from Firestore")
+            Log.d("CategoryRepo", "Mapped ${firestoreCategories.size} categories from Firestore")
             
-            // Insert/update categories in Room using REPLACE strategy
+            // Step 4: Insert/Update in Room
             firestoreCategories.forEach { entity ->
                 // Check if category with this firestoreId already exists
                 val existing = categoryDao.getCategoryByFirestoreId(entity.firestoreId)
                 
                 if (existing != null) {
-                    // Update existing category, preserving Room ID
-                    val updatedEntity = entity.copy(id = existing.id)
+                    // Update existing category, preserving Room ID and ensuring userId is correct
+                    val updatedEntity = entity.copy(
+                        id = existing.id,
+                        userId = userId // Ensure userId is set correctly
+                    )
                     categoryDao.upsertCategory(updatedEntity)
+                    Log.d("CategoryRepo", "Updated category: ${entity.name} (firestoreId: ${entity.firestoreId})")
                 } else {
                     // Insert new category
                     categoryDao.upsertCategory(entity)
+                    Log.d("CategoryRepo", "Inserted new category: ${entity.name} (firestoreId: ${entity.firestoreId})")
                 }
             }
             

@@ -52,10 +52,17 @@ class HomeViewModel @Inject constructor(
         // Sync data from Firestore when ViewModel is created
         viewModelScope.launch {
             try {
-                // Sync transactions, budgets, and categories on startup
-                transactionRepository.syncTransactions()
-                budgetRepository.syncBudgets()
+                // CRITICAL: Sync categories FIRST before transactions
+                // Transactions have foreign key constraints to categories
+                // If we sync a transaction that points to a category that doesn't exist yet,
+                // the foreign key constraint will fail or show as unknown
                 categoryRepository.syncCategories()
+                
+                // Then sync transactions (which depend on categories)
+                transactionRepository.syncTransactions()
+                
+                // Finally sync budgets (which may also depend on categories)
+                budgetRepository.syncBudgets()
             } catch (e: Exception) {
                 // Log error but don't crash - app can work offline
                 e.printStackTrace()
