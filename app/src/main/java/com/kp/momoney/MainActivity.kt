@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
@@ -35,6 +37,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.presentation.MainViewModel
+import com.kp.momoney.presentation.common.OfflineBanner
 import com.kp.momoney.presentation.navigation.AppNavHost
 import com.kp.momoney.presentation.navigation.Screen
 import com.kp.momoney.ui.theme.AppThemeConfig
@@ -91,6 +94,10 @@ private fun MainScreen(
     val currentRoute = navBackStackEntry?.destination?.route
     val startDestination = Screen.Splash.route
     val isAuthRoute = currentRoute == Screen.Login.route || currentRoute == Screen.Register.route || currentRoute == Screen.Splash.route
+    
+    // Get ViewModel for connectivity status
+    val viewModel: MainViewModel = hiltViewModel()
+    val isOffline by viewModel.isOffline.collectAsState()
     
     // Determine bottom bar visibility based on current route
     val showBottomBar = currentRoute in listOf(
@@ -155,12 +162,20 @@ private fun MainScreen(
             }
         }
     ) { innerPadding ->
-        AppNavHost(
-            navController = navController,
-            innerPadding = innerPadding,
-            startDestination = startDestination,
-            themeConfig = themeConfig,
-            onThemeChanged = onThemeChanged
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            AppNavHost(
+                navController = navController,
+                innerPadding = innerPadding,
+                startDestination = startDestination,
+                themeConfig = themeConfig,
+                onThemeChanged = onThemeChanged
+            )
+            
+            // Offline banner positioned at the bottom, above navigation bar
+            OfflineBanner(
+                isOffline = isOffline,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 }
