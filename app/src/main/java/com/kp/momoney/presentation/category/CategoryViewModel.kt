@@ -46,6 +46,9 @@ class CategoryViewModel @Inject constructor(
     private val _isLoadingDelete = MutableStateFlow(false)
     val isLoadingDelete: StateFlow<Boolean> = _isLoadingDelete.asStateFlow()
 
+    // Track last action type for message display
+    private var lastActionType: String? = null // "create" or "delete"
+
     // Get all categories and filter to show only user categories
     val userCategories: StateFlow<List<Category>> = categoryRepository.getAllCategories()
         .map { categories ->
@@ -94,6 +97,7 @@ class CategoryViewModel @Inject constructor(
                 _isLoading.value = false
                 
                 // Show success event
+                lastActionType = "create"
                 _event.value = CategoryEvent.Success
             } catch (e: Exception) {
                 _isLoading.value = false
@@ -105,6 +109,20 @@ class CategoryViewModel @Inject constructor(
     fun clearEvent() {
         _event.value = null
     }
+
+    /**
+     * Called when a message has been shown to the user.
+     * Resets the event state to prevent it from showing again.
+     */
+    fun onMessageShown() {
+        _event.value = null
+        lastActionType = null
+    }
+
+    /**
+     * Gets the last action type for determining the success message.
+     */
+    fun getLastActionType(): String? = lastActionType
 
     fun onNameChanged(value: String) {
         categoryName.value = value
@@ -143,6 +161,7 @@ class CategoryViewModel @Inject constructor(
                 _selectedCategoryId.value = null
                 
                 // Show success event
+                lastActionType = "delete"
                 _event.value = CategoryEvent.Success
             } catch (e: Exception) {
                 _isLoadingDelete.value = false

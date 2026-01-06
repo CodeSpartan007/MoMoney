@@ -92,24 +92,28 @@ fun CategoryManagerScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Handle events
+    // Handle events - fix sticky state by clearing immediately after showing
     LaunchedEffect(event) {
-        val currentEvent = event
+        val currentEvent = event ?: return@LaunchedEffect
+        
         when (currentEvent) {
             is CategoryEvent.Success -> {
-                // Check if this is a delete or create event based on context
-                if (selectedCategoryId == null) {
-                    snackbarHostState.showSnackbar("Category created successfully!")
-                } else {
-                    snackbarHostState.showSnackbar("Category deleted successfully!")
+                // Determine message based on last action type
+                val lastAction = viewModel.getLastActionType()
+                val message = when (lastAction) {
+                    "delete" -> "Category deleted successfully!"
+                    "create" -> "Category created successfully!"
+                    else -> "Operation completed successfully!"
                 }
-                viewModel.clearEvent()
+                snackbarHostState.showSnackbar(message)
+                // Immediately reset the event to prevent it from showing again
+                viewModel.onMessageShown()
             }
             is CategoryEvent.Error -> {
                 snackbarHostState.showSnackbar(currentEvent.message)
-                viewModel.clearEvent()
+                // Immediately reset the event to prevent it from showing again
+                viewModel.onMessageShown()
             }
-            null -> {}
         }
     }
 
