@@ -149,8 +149,8 @@ class AddTransactionViewModel @Inject constructor(
                     transactionRepository.insertTransaction(transaction)
                 }
                 
-                // Add 3-second artificial delay
-                delay(3000)
+                // Repository now returns immediately after Room write
+                // No need for artificial delay
                 
                 // Check budget for expense transactions only
                 var budgetAlertMessage: String? = null

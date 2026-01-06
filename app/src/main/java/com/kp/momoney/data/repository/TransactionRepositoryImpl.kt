@@ -19,10 +19,13 @@ import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import android.util.Log
 import kotlinx.coroutines.flow.map
@@ -92,25 +95,29 @@ class TransactionRepositoryImpl @Inject constructor(
         val firestoreId = UUID.randomUUID().toString()
         val entity = transaction.toEntity(categoryId, firestoreId)
         
-        // Save to Room first
+        // 1. Instant Local Write (Source of Truth for UI)
         transactionDao.insertTransaction(entity)
         
-        // Sync to Firestore if user is authenticated
+        // 2. Background Cloud Sync (Fire-and-Forget - Don't wait for this to finish)
         currentUserId?.let { userId ->
-            try {
-                val firestoreMap = transaction.toFirestoreMap(firestoreId)
-                firestore.collection("users")
-                    .document(userId)
-                    .collection("transactions")
-                    .document(firestoreId)
-                    .set(firestoreMap)
-                    .await()
-                Log.d("TransactionRepo", "Transaction synced to Firestore: $firestoreId")
-            } catch (e: Exception) {
-                Log.e("TransactionRepo", "Failed to sync transaction to Firestore", e)
-                // Continue even if Firestore sync fails - local data is saved
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val firestoreMap = transaction.toFirestoreMap(firestoreId)
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("transactions")
+                        .document(firestoreId)
+                        .set(firestoreMap)
+                        .await()
+                    Log.d("TransactionRepo", "Transaction synced to Firestore: $firestoreId")
+                } catch (e: Exception) {
+                    Log.e("TransactionRepo", "Failed to sync transaction to Firestore", e)
+                    // Firestore SDK handles the offline queue automatically.
+                    // Don't crash UI - local data is already saved.
+                }
             }
         }
+        // Return immediately after Room write completes
     }
     
     override suspend fun updateTransaction(transaction: Transaction) {
@@ -124,51 +131,60 @@ class TransactionRepositoryImpl @Inject constructor(
             firestoreId = firestoreId
         )
         
-        // Update in Room
+        // 1. Instant Local Update (Source of Truth for UI)
         transactionDao.updateTransaction(entity)
         
-        // Sync to Firestore if user is authenticated
+        // 2. Background Cloud Sync (Fire-and-Forget - Don't wait for this to finish)
         currentUserId?.let { userId ->
-            try {
-                val firestoreMap = transaction.toFirestoreMap(firestoreId)
-                firestore.collection("users")
-                    .document(userId)
-                    .collection("transactions")
-                    .document(firestoreId)
-                    .set(firestoreMap)
-                    .await()
-                Log.d("TransactionRepo", "Transaction updated in Firestore: $firestoreId")
-            } catch (e: Exception) {
-                Log.e("TransactionRepo", "Failed to update transaction in Firestore", e)
-                // Continue even if Firestore sync fails - local data is updated
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val firestoreMap = transaction.toFirestoreMap(firestoreId)
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("transactions")
+                        .document(firestoreId)
+                        .set(firestoreMap)
+                        .await()
+                    Log.d("TransactionRepo", "Transaction updated in Firestore: $firestoreId")
+                } catch (e: Exception) {
+                    Log.e("TransactionRepo", "Failed to update transaction in Firestore", e)
+                    // Firestore SDK handles the offline queue automatically.
+                    // Don't crash UI - local data is already updated.
+                }
             }
         }
+        // Return immediately after Room update completes
     }
     
     override suspend fun deleteTransaction(transaction: Transaction) {
         // Get the entity to retrieve firestoreId
         val entity = transactionDao.getTransactionById(transaction.id)
+        val firestoreId = entity?.firestoreId
         
-        // Delete from Room
+        // 1. Instant Local Delete (Source of Truth for UI)
         transactionDao.deleteTransactionById(transaction.id)
         
-        // Delete from Firestore if user is authenticated and entity has firestoreId
+        // 2. Background Cloud Sync (Fire-and-Forget - Don't wait for this to finish)
         currentUserId?.let { userId ->
-            entity?.firestoreId?.let { firestoreId ->
-                try {
-                    firestore.collection("users")
-                        .document(userId)
-                        .collection("transactions")
-                        .document(firestoreId)
-                        .delete()
-                        .await()
-                    Log.d("TransactionRepo", "Transaction deleted from Firestore: $firestoreId")
-                } catch (e: Exception) {
-                    Log.e("TransactionRepo", "Failed to delete transaction from Firestore", e)
-                    // Continue even if Firestore delete fails - local data is deleted
+            firestoreId?.let { id ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        firestore.collection("users")
+                            .document(userId)
+                            .collection("transactions")
+                            .document(id)
+                            .delete()
+                            .await()
+                        Log.d("TransactionRepo", "Transaction deleted from Firestore: $id")
+                    } catch (e: Exception) {
+                        Log.e("TransactionRepo", "Failed to delete transaction from Firestore", e)
+                        // Firestore SDK handles the offline queue automatically.
+                        // Don't crash UI - local data is already deleted.
+                    }
                 }
             }
         }
+        // Return immediately after Room delete completes
     }
     
     private suspend fun resolveCategoryId(transaction: Transaction): Int? {
