@@ -53,5 +53,8 @@ interface TransactionDao {
     
     @Query("SELECT * FROM transactions WHERE recurrence != 'NEVER'")
     suspend fun getRecurringTransactions(): List<TransactionEntity>
+    
+    @Query("SELECT * FROM transactions WHERE note = :note AND amount = :amount AND date = :date AND recurrence = 'NEVER' LIMIT 1")
+    suspend fun findDuplicateHistoryTransaction(note: String, amount: Double, date: Long): TransactionEntity?
 }
 

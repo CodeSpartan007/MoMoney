@@ -322,6 +322,7 @@ class TransactionRepositoryImpl @Inject constructor(
             Log.d("RecurrenceWorker", "Found ${recurringEntities.size} recurring transactions")
             
             val currentTime = System.currentTimeMillis()
+            val userId = currentUserId
             
             recurringEntities.forEach { originalEntity ->
                 val recurrence = Recurrence.fromString(originalEntity.recurrence)
@@ -334,16 +335,66 @@ class TransactionRepositoryImpl @Inject constructor(
                 if (nextDueDate <= currentTime) {
                     Log.d("RecurrenceWorker", "Processing recurring transaction ID: ${originalEntity.id}, Original date: $originalDate, Next due date: $nextDueDate")
                     
-                    // Step A: Create History Record
                     // Get category info for the history record
                     val category = originalEntity.categoryId?.let { categoryDao.getCategoryById(it) }
+                    val note = originalEntity.note ?: ""
                     
-                    // Create history record with the OLD date (originalTransaction.date)
+                    // Step A: Idempotency Check - Check if history transaction already exists
+                    val existingHistory = transactionDao.findDuplicateHistoryTransaction(
+                        note = note,
+                        amount = originalEntity.amount,
+                        date = originalDate
+                    )
+                    
+                    if (existingHistory != null) {
+                        Log.d("RecurrenceWorker", "History transaction already exists for transaction ID: ${originalEntity.id}, skipping duplicate creation")
+                        // Still need to update the parent transaction if it's not already updated
+                        val currentEntity = transactionDao.getTransactionById(originalEntity.id)
+                        if (currentEntity != null && currentEntity.date == originalDate) {
+                            // Parent hasn't been updated yet, update it now
+                            val updatedEntity = originalEntity.copy(date = nextDueDate)
+                            transactionDao.updateTransaction(updatedEntity)
+                            
+                            // Immediately sync parent update to Firestore
+                            userId?.let { uid ->
+                                originalEntity.firestoreId?.let { firestoreId ->
+                                    try {
+                                        val parentTransaction = Transaction(
+                                            id = updatedEntity.id,
+                                            amount = updatedEntity.amount,
+                                            date = Date(updatedEntity.date),
+                                            note = note,
+                                            type = updatedEntity.type,
+                                            categoryId = updatedEntity.categoryId,
+                                            categoryName = category?.name.orEmpty(),
+                                            categoryColor = category?.colorHex.orEmpty(),
+                                            categoryIcon = category?.iconName.orEmpty(),
+                                            recurrence = Recurrence.fromString(updatedEntity.recurrence)
+                                        )
+                                        val firestoreMap = parentTransaction.toFirestoreMap(firestoreId)
+                                        firestore.collection("users")
+                                            .document(uid)
+                                            .collection("transactions")
+                                            .document(firestoreId)
+                                            .set(firestoreMap)
+                                            .await()
+                                        Log.d("RecurrenceWorker", "Synced updated parent transaction to Firestore: $firestoreId")
+                                    } catch (e: Exception) {
+                                        Log.e("RecurrenceWorker", "Failed to sync parent transaction to Firestore", e)
+                                    }
+                                }
+                            }
+                        }
+                        return@forEach
+                    }
+                    
+                    // Step B: Create History Record (Date = Old Date, Recurrence = NEVER)
+                    val historyFirestoreId = UUID.randomUUID().toString()
                     val historyRecord = Transaction(
                         id = 0, // Room will generate a new ID
                         amount = originalEntity.amount,
                         date = Date(originalDate), // The OLD date
-                        note = originalEntity.note ?: "",
+                        note = note,
                         type = originalEntity.type,
                         categoryId = originalEntity.categoryId,
                         categoryName = category?.name.orEmpty(),
@@ -352,14 +403,63 @@ class TransactionRepositoryImpl @Inject constructor(
                         recurrence = Recurrence.NEVER // History doesn't recur
                     )
                     
-                    // Insert the history record
-                    insertTransaction(historyRecord)
-                    Log.d("RecurrenceWorker", "Created history record for original transaction ID: ${originalEntity.id} with date: $originalDate")
-                    
-                    // Step B: Update Schedule - Move the original transaction forward
+                    // Step C: Update Parent Transaction (Date = New Date, Recurrence = MONTHLY/WEEKLY)
                     val updatedEntity = originalEntity.copy(date = nextDueDate)
+                    
+                    // Step D: Save to Room first
+                    val categoryId = resolveCategoryId(historyRecord)
+                    val historyEntity = historyRecord.toEntity(categoryId, historyFirestoreId)
+                    transactionDao.insertTransaction(historyEntity)
                     transactionDao.updateTransaction(updatedEntity)
+                    
+                    Log.d("RecurrenceWorker", "Created history record for original transaction ID: ${originalEntity.id} with date: $originalDate")
                     Log.d("RecurrenceWorker", "Updated original transaction ID: ${originalEntity.id} to next due date: $nextDueDate")
+                    
+                    // Step E: Immediately sync BOTH records to Firestore
+                    userId?.let { uid ->
+                        try {
+                            // Sync history record
+                            val historyFirestoreMap = historyRecord.toFirestoreMap(historyFirestoreId)
+                            firestore.collection("users")
+                                .document(uid)
+                                .collection("transactions")
+                                .document(historyFirestoreId)
+                                .set(historyFirestoreMap)
+                                .await()
+                            Log.d("RecurrenceWorker", "Synced history transaction to Firestore: $historyFirestoreId")
+                            
+                            // Sync updated parent transaction
+                            originalEntity.firestoreId?.let { parentFirestoreId ->
+                                val parentTransaction = Transaction(
+                                    id = updatedEntity.id,
+                                    amount = updatedEntity.amount,
+                                    date = Date(updatedEntity.date),
+                                    note = note,
+                                    type = updatedEntity.type,
+                                    categoryId = updatedEntity.categoryId,
+                                    categoryName = category?.name.orEmpty(),
+                                    categoryColor = category?.colorHex.orEmpty(),
+                                    categoryIcon = category?.iconName.orEmpty(),
+                                    recurrence = Recurrence.fromString(updatedEntity.recurrence)
+                                )
+                                val parentFirestoreMap = parentTransaction.toFirestoreMap(parentFirestoreId)
+                                firestore.collection("users")
+                                    .document(uid)
+                                    .collection("transactions")
+                                    .document(parentFirestoreId)
+                                    .set(parentFirestoreMap)
+                                    .await()
+                                Log.d("RecurrenceWorker", "Synced updated parent transaction to Firestore: $parentFirestoreId")
+                            } ?: run {
+                                Log.w("RecurrenceWorker", "Parent transaction has no firestoreId, cannot sync to Firestore")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("RecurrenceWorker", "Failed to sync transactions to Firestore", e)
+                            // Continue even if Firestore sync fails - local data is saved
+                        }
+                    } ?: run {
+                        Log.w("RecurrenceWorker", "No authenticated user, skipping Firestore sync")
+                    }
                 }
             }
             
