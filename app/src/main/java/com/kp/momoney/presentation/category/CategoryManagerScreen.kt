@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +23,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -41,7 +46,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,15 +86,23 @@ fun CategoryManagerScreen(
     val userCategories by viewModel.userCategories.collectAsState()
     val event by viewModel.event.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
+    val isLoadingDelete by viewModel.isLoadingDelete.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     // Handle events
     LaunchedEffect(event) {
         val currentEvent = event
         when (currentEvent) {
             is CategoryEvent.Success -> {
-                snackbarHostState.showSnackbar("Category created successfully!")
+                // Check if this is a delete or create event based on context
+                if (selectedCategoryId == null) {
+                    snackbarHostState.showSnackbar("Category created successfully!")
+                } else {
+                    snackbarHostState.showSnackbar("Category deleted successfully!")
+                }
                 viewModel.clearEvent()
             }
             is CategoryEvent.Error -> {
@@ -100,23 +115,55 @@ fun CategoryManagerScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_logo_mini),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .padding(end = 8.dp)
-                        )
-                        Text(text = "Manage Categories")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+            if (selectedCategoryId != null) {
+                // Contextual TopBar when category is selected
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(text = "Delete Category?")
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { showDeleteDialog = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+            } else {
+                // Normal TopBar
+                CenterAlignedTopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_logo_mini),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .padding(end = 8.dp)
+                            )
+                            Text(text = "Manage Categories")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
@@ -264,13 +311,58 @@ fun CategoryManagerScreen(
                 }
             } else {
                 items(userCategories) { category ->
-                    CategoryItem(category = category)
+                    CategoryItem(
+                        category = category,
+                        isSelected = selectedCategoryId == category.id,
+                        onLongClick = { viewModel.onCategoryLongClick(category.id) }
+                    )
                 }
             }
             }
             
-            // Loading Overlay
+            // Loading Overlay for creation
             LoadingOverlay(isLoading = isLoading)
+            
+            // Loading Overlay for deletion (full screen)
+            if (isLoadingDelete) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    com.kp.momoney.presentation.common.AppLoadingAnimation()
+                }
+            }
+        }
+        
+        // Confirmation Dialog
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Category") },
+                text = {
+                    Text("Delete this category? This will permanently remove all related transactions and budgets.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteDialog = false
+                            viewModel.deleteSelectedCategory()
+                        }
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = { showDeleteDialog = false }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -320,7 +412,9 @@ private fun ColorSwatch(
 
 @Composable
 private fun CategoryItem(
-    category: Category
+    category: Category,
+    isSelected: Boolean = false,
+    onLongClick: () -> Unit = {}
 ) {
     val color = try {
         Color(android.graphics.Color.parseColor("#${category.color}"))
@@ -329,12 +423,36 @@ private fun CategoryItem(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isSelected) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 1.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .combinedClickable(
+                    onLongClick = onLongClick
+                ) {}
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)

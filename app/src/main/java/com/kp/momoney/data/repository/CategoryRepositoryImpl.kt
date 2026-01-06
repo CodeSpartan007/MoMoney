@@ -144,20 +144,59 @@ class CategoryRepositoryImpl @Inject constructor(
     }
     
     override suspend fun deleteCategory(categoryId: Int) {
+        // Get category before deleting to access name and firestoreId
+        val category = categoryDao.getCategoryById(categoryId)
+            ?: throw IllegalArgumentException("Category with id $categoryId not found")
+        
+        val categoryName = category.name
+        val firestoreId = category.firestoreId
+        
+        // Delete from Room first (cascading delete will handle related transactions/budgets locally)
         categoryDao.deleteCategory(categoryId)
         
         // Also delete from Firestore if user is authenticated
         currentUserId?.let { userId ->
-            val category = categoryDao.getCategoryById(categoryId)
-            category?.firestoreId?.let { firestoreId ->
+            firestoreId?.let { fsId ->
                 try {
-                    firestore.collection("users")
+                    // Use batched write for atomic deletion
+                    val batch = firestore.batch()
+                    
+                    // Step 1: Delete the category document
+                    val categoryRef = firestore.collection("users")
                         .document(userId)
                         .collection("categories")
-                        .document(firestoreId)
-                        .delete()
+                        .document(fsId)
+                    batch.delete(categoryRef)
+                    
+                    // Step 2: Query and delete related transactions (by categoryName)
+                    val transactionsSnapshot = firestore.collection("users")
+                        .document(userId)
+                        .collection("transactions")
+                        .whereEqualTo("categoryName", categoryName)
+                        .get()
                         .await()
-                    Log.d("CategoryRepo", "Category deleted from Firestore: $firestoreId")
+                    
+                    transactionsSnapshot.documents.forEach { doc ->
+                        batch.delete(doc.reference)
+                    }
+                    Log.d("CategoryRepo", "Found ${transactionsSnapshot.documents.size} transactions to delete")
+                    
+                    // Step 3: Query and delete related budgets (by categoryId - local ID)
+                    val budgetsSnapshot = firestore.collection("users")
+                        .document(userId)
+                        .collection("budgets")
+                        .whereEqualTo("categoryId", categoryId.toLong())
+                        .get()
+                        .await()
+                    
+                    budgetsSnapshot.documents.forEach { doc ->
+                        batch.delete(doc.reference)
+                    }
+                    Log.d("CategoryRepo", "Found ${budgetsSnapshot.documents.size} budgets to delete")
+                    
+                    // Commit the batch
+                    batch.commit().await()
+                    Log.d("CategoryRepo", "Category and related data deleted from Firestore: $fsId")
                 } catch (e: Exception) {
                     Log.e("CategoryRepo", "Failed to delete category from Firestore", e)
                     // Continue even if Firestore delete fails - local data is deleted

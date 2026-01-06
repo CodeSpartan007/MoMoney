@@ -38,6 +38,14 @@ class CategoryViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // Selection state for deletion
+    private val _selectedCategoryId = MutableStateFlow<Int?>(null)
+    val selectedCategoryId: StateFlow<Int?> = _selectedCategoryId.asStateFlow()
+
+    // Loading state for deletion
+    private val _isLoadingDelete = MutableStateFlow(false)
+    val isLoadingDelete: StateFlow<Boolean> = _isLoadingDelete.asStateFlow()
+
     // Get all categories and filter to show only user categories
     val userCategories: StateFlow<List<Category>> = categoryRepository.getAllCategories()
         .map { categories ->
@@ -108,6 +116,39 @@ class CategoryViewModel @Inject constructor(
 
     fun onColorSelected(color: String) {
         selectedColor.value = color
+    }
+
+    fun onCategoryLongClick(id: Int) {
+        // Toggle selection: if already selected, deselect; otherwise select
+        _selectedCategoryId.value = if (_selectedCategoryId.value == id) null else id
+    }
+
+    fun clearSelection() {
+        _selectedCategoryId.value = null
+    }
+
+    fun deleteSelectedCategory() {
+        val categoryId = _selectedCategoryId.value ?: return
+
+        viewModelScope.launch {
+            try {
+                _isLoadingDelete.value = true
+                
+                categoryRepository.deleteCategory(categoryId)
+                
+                // Delay to show the animation
+                delay(4000)
+                
+                _isLoadingDelete.value = false
+                _selectedCategoryId.value = null
+                
+                // Show success event
+                _event.value = CategoryEvent.Success
+            } catch (e: Exception) {
+                _isLoadingDelete.value = false
+                _event.value = CategoryEvent.Error(e.message ?: "Failed to delete category")
+            }
+        }
     }
 }
 
