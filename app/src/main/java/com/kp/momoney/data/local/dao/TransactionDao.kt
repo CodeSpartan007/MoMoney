@@ -50,5 +50,8 @@ interface TransactionDao {
     
     @Query("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE category_id = :categoryId AND date BETWEEN :startDate AND :endDate AND type = 'Expense'")
     suspend fun getCategorySpendingForCategory(categoryId: Int, startDate: Long, endDate: Long): Double
+    
+    @Query("SELECT * FROM transactions WHERE recurrence != 'NEVER'")
+    suspend fun getRecurringTransactions(): List<TransactionEntity>
 }
 

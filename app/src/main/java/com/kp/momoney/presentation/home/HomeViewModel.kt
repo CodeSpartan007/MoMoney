@@ -61,6 +61,9 @@ class HomeViewModel @Inject constructor(
                 // Then sync transactions (which depend on categories)
                 transactionRepository.syncTransactions()
                 
+                // Process recurring transactions (create child transactions if due)
+                transactionRepository.processRecurringTransactions()
+                
                 // Finally sync budgets (which may also depend on categories)
                 budgetRepository.syncBudgets()
             } catch (e: Exception) {

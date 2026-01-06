@@ -15,11 +15,13 @@ import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.DateUtils
+import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.tasks.await
 import android.util.Log
@@ -311,6 +313,126 @@ class TransactionRepositoryImpl @Inject constructor(
     
     override suspend fun getCategorySpendingForCategory(categoryId: Int, startDate: Long, endDate: Long): Double {
         return transactionDao.getCategorySpendingForCategory(categoryId, startDate, endDate)
+    }
+    
+    override suspend fun processRecurringTransactions() {
+        try {
+            Log.d("RecurrenceWorker", "Starting to process recurring transactions")
+            val recurringEntities = transactionDao.getRecurringTransactions()
+            Log.d("RecurrenceWorker", "Found ${recurringEntities.size} recurring transactions")
+            
+            val currentTime = System.currentTimeMillis()
+            val today = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            recurringEntities.forEach { entity ->
+                val recurrence = Recurrence.fromString(entity.recurrence)
+                if (recurrence == Recurrence.NEVER) return@forEach
+                
+                val transactionDate = entity.date
+                val nextDate = calculateNextDate(transactionDate, recurrence)
+                
+                // Check if the next date has passed (transaction is due)
+                if (nextDate <= currentTime) {
+                    Log.d("RecurrenceWorker", "Processing recurring transaction ID: ${entity.id}, Next date: $nextDate, Current: $currentTime")
+                    
+                    // Check if a child transaction already exists for this expected date
+                    // We'll check if there's a transaction with the same amount, category, and date within a day range
+                    val startOfDay = Calendar.getInstance().apply {
+                        timeInMillis = nextDate
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+                    
+                    val endOfDay = Calendar.getInstance().apply {
+                        timeInMillis = nextDate
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                        set(Calendar.SECOND, 59)
+                        set(Calendar.MILLISECOND, 999)
+                    }.timeInMillis
+                    
+                    val existingTransactions = transactionDao.getTransactionsByDateRange(startOfDay, endOfDay)
+                    val existingList = existingTransactions.first()
+                    
+                    // Check if a duplicate already exists (same amount, category, and note)
+                    val duplicateExists = existingList.any { existing ->
+                        existing.amount == entity.amount &&
+                        existing.categoryId == entity.categoryId &&
+                        existing.note == entity.note &&
+                        existing.type == entity.type
+                    }
+                    
+                    if (!duplicateExists) {
+                        // Get category info for the new transaction
+                        val category = entity.categoryId?.let { categoryDao.getCategoryById(it) }
+                        
+                        // Create a new child transaction with recurrence = NEVER
+                        val childTransaction = Transaction(
+                            id = 0, // New transaction
+                            amount = entity.amount,
+                            date = Date(nextDate),
+                            note = entity.note ?: "",
+                            type = entity.type,
+                            categoryId = entity.categoryId,
+                            categoryName = category?.name.orEmpty(),
+                            categoryColor = category?.colorHex.orEmpty(),
+                            categoryIcon = category?.iconName.orEmpty(),
+                            recurrence = Recurrence.NEVER // Child transactions don't recur
+                        )
+                        
+                        // Insert the child transaction
+                        insertTransaction(childTransaction)
+                        Log.d("RecurrenceWorker", "Created child transaction for parent ID: ${entity.id}")
+                        
+                        // Update the parent transaction's date to the next date
+                        val updatedEntity = entity.copy(date = nextDate)
+                        transactionDao.updateTransaction(updatedEntity)
+                        Log.d("RecurrenceWorker", "Updated parent transaction ID: ${entity.id} to next date: $nextDate")
+                    } else {
+                        Log.d("RecurrenceWorker", "Duplicate transaction already exists for parent ID: ${entity.id}, skipping")
+                        // Still update the parent date to prevent reprocessing
+                        val updatedEntity = entity.copy(date = nextDate)
+                        transactionDao.updateTransaction(updatedEntity)
+                    }
+                }
+            }
+            
+            Log.d("RecurrenceWorker", "Finished processing recurring transactions")
+        } catch (e: Exception) {
+            Log.e("RecurrenceWorker", "Error processing recurring transactions", e)
+            // Don't throw - we don't want to crash the app if recurrence processing fails
+        }
+    }
+    
+    /**
+     * Calculate the next occurrence date based on the recurrence type
+     */
+    private fun calculateNextDate(originalDate: Long, recurrence: Recurrence): Long {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = originalDate
+        }
+        
+        when (recurrence) {
+            Recurrence.WEEKLY -> {
+                calendar.add(Calendar.WEEK_OF_YEAR, 1)
+            }
+            Recurrence.MONTHLY -> {
+                calendar.add(Calendar.MONTH, 1)
+            }
+            Recurrence.NEVER -> {
+                // Should not happen, but return original date
+                return originalDate
+            }
+        }
+        
+        return calendar.timeInMillis
     }
 }
 
