@@ -19,17 +19,22 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.kp.momoney.data.local.AppTheme
+import com.kp.momoney.presentation.MainViewModel
 import com.kp.momoney.presentation.navigation.AppNavHost
 import com.kp.momoney.presentation.navigation.Screen
 import com.kp.momoney.ui.theme.AppThemeConfig
@@ -42,8 +47,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var themeConfig by remember { 
-                mutableStateOf(AppThemeConfig(seedColor = SunYellow, isDark = false))
+            val viewModel: MainViewModel = hiltViewModel()
+            val appTheme by viewModel.theme.collectAsState(initial = AppTheme.SYSTEM)
+            
+            // Determine isDarkTheme based on AppTheme
+            val isDarkTheme = when (appTheme) {
+                AppTheme.LIGHT -> false
+                AppTheme.DARK -> true
+                AppTheme.SYSTEM -> isSystemInDarkTheme()
+            }
+            
+            // Remember seed color (can be changed by user)
+            var seedColor by remember { mutableStateOf(SunYellow) }
+            
+            // Create themeConfig with DataStore-controlled isDark and user-controlled seedColor
+            val themeConfig = remember(isDarkTheme, seedColor) { 
+                AppThemeConfig(seedColor = seedColor, isDark = isDarkTheme)
             }
             
             MoMoneyTheme(themeConfig = themeConfig) {
@@ -54,7 +73,8 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         themeConfig = themeConfig,
                         onThemeChanged = { newConfig ->
-                            themeConfig = newConfig
+                            // Only update seedColor, isDark comes from DataStore
+                            seedColor = newConfig.seedColor
                         }
                     )
                 }

@@ -6,6 +6,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.kp.momoney.data.local.AppTheme
+import com.kp.momoney.data.local.UserPreferencesRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.CsvUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,11 +19,26 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     val userEmail: String
         get() = firebaseAuth.currentUser?.email ?: ""
+
+    /**
+     * Current theme preference as a Flow
+     */
+    val currentTheme = userPreferencesRepository.theme
+
+    /**
+     * Set the theme preference
+     */
+    fun setTheme(theme: AppTheme) {
+        viewModelScope.launch {
+            userPreferencesRepository.setTheme(theme)
+        }
+    }
 
     fun exportData(context: Context) {
         viewModelScope.launch {

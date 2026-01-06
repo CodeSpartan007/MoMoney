@@ -33,11 +33,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.ui.theme.AppThemeConfig
 import com.kp.momoney.ui.theme.ThemeSeeds
 import com.kp.momoney.R
@@ -62,6 +65,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val userEmail = FirebaseAuth.getInstance().currentUser?.email ?: ""
+    val currentTheme by viewModel.currentTheme.collectAsState(initial = AppTheme.SYSTEM)
 
     Scaffold(
         topBar = {
@@ -143,26 +147,37 @@ fun SettingsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                     
-                    // Dark Mode Switch
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Theme Selection
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Dark Mode",
+                            text = "Theme",
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        Switch(
-                            checked = themeConfig.isDark,
-                            onCheckedChange = { isDark ->
-                                onThemeChanged(themeConfig.copy(isDark = isDark))
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            ThemeOption(
+                                label = "System",
+                                theme = AppTheme.SYSTEM,
+                                selected = currentTheme == AppTheme.SYSTEM,
+                                onClick = { viewModel.setTheme(AppTheme.SYSTEM) }
                             )
-                        )
+                            ThemeOption(
+                                label = "Light",
+                                theme = AppTheme.LIGHT,
+                                selected = currentTheme == AppTheme.LIGHT,
+                                onClick = { viewModel.setTheme(AppTheme.LIGHT) }
+                            )
+                            ThemeOption(
+                                label = "Dark",
+                                theme = AppTheme.DARK,
+                                selected = currentTheme == AppTheme.DARK,
+                                onClick = { viewModel.setTheme(AppTheme.DARK) }
+                            )
+                        }
                     }
                     
                     // Palette Selection
@@ -251,6 +266,32 @@ fun SettingsScreen(
                 Text("Sign Out")
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    label: String,
+    theme: AppTheme,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 4.dp)
+        )
     }
 }
 
