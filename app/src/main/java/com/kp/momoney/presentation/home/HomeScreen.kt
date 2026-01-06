@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
@@ -40,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.kp.momoney.domain.model.Transaction
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -68,6 +71,7 @@ import com.kp.momoney.presentation.common.AppLoadingAnimation
 fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToEditTransaction: (Long) -> Unit = {},
+    navController: NavController? = null,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     // FIX: Use collectAsState() to listen for real-time updates
@@ -83,6 +87,30 @@ fun HomeScreen(
     
     var showFilterSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    
+    // Observe budget alert from savedStateHandle
+    var budgetAlertMessage by remember { mutableStateOf<String?>(null) }
+    var showBudgetAlert by remember { mutableStateOf(false) }
+    
+    // Check for budget alert when screen resumes or is first composed
+    val savedStateHandle = navController?.currentBackStackEntry?.savedStateHandle
+    val budgetAlertLiveData = savedStateHandle?.getLiveData<String>("budget_alert")
+    
+    // Observe the LiveData and show dialog when message is received
+    DisposableEffect(budgetAlertLiveData) {
+        val observer = androidx.lifecycle.Observer<String?> { message ->
+            if (message != null) {
+                budgetAlertMessage = message
+                showBudgetAlert = true
+                // Clear the savedStateHandle to prevent showing again on rotation
+                savedStateHandle?.remove<String>("budget_alert")
+            }
+        }
+        budgetAlertLiveData?.observeForever(observer)
+        onDispose {
+            budgetAlertLiveData?.removeObserver(observer)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -252,6 +280,33 @@ fun HomeScreen(
                     dismissButton = {
                         TextButton(onClick = { showDeleteDialog = false }) {
                             Text("Cancel")
+                        }
+                    }
+                )
+            }
+            
+            // Budget Alert Dialog
+            if (showBudgetAlert && budgetAlertMessage != null) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        showBudgetAlert = false
+                    },
+                    title = { Text("Budget Alert") },
+                    text = { Text(budgetAlertMessage ?: "") },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = "Warning",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showBudgetAlert = false
+                            }
+                        ) {
+                            Text("OK")
                         }
                     }
                 )

@@ -89,14 +89,16 @@ fun AppNavHost(
                 },
                 onNavigateToEditTransaction = { transactionId ->
                     navController.navigate(Screen.AddTransaction.createRoute(transactionId))
-                }
+                },
+                navController = navController
             )
         }
         
         // Route for adding new transaction (no ID)
         composable(Screen.AddTransaction.route) {
             AddTransactionScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                navController = navController
             )
         }
         
@@ -110,7 +112,8 @@ fun AppNavHost(
             )
         ) { backStackEntry ->
             AddTransactionScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                navController = navController
             )
         }
         

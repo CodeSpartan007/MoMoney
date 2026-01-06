@@ -47,5 +47,8 @@ interface TransactionDao {
     
     @Query("SELECT category_id as categoryId, SUM(amount) as total FROM transactions WHERE date BETWEEN :startDate AND :endDate AND type = 'Expense' AND category_id IS NOT NULL GROUP BY category_id")
     fun getCategorySpendingByDateRange(startDate: Long, endDate: Long): Flow<List<CategorySpending>>
+    
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE category_id = :categoryId AND date BETWEEN :startDate AND :endDate AND type = 'Expense'")
+    suspend fun getCategorySpendingForCategory(categoryId: Int, startDate: Long, endDate: Long): Double
 }
 

@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.kp.momoney.R
 import com.kp.momoney.presentation.common.AppLoadingAnimation
 import java.text.SimpleDateFormat
@@ -56,6 +57,7 @@ import java.util.Locale
 @Composable
 fun AddTransactionScreen(
     onNavigateBack: () -> Unit,
+    navController: NavController? = null,
     viewModel: AddTransactionViewModel = hiltViewModel()
 ) {
     val amount by viewModel.amount.collectAsState()
@@ -74,10 +76,16 @@ fun AddTransactionScreen(
     var openDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(event) {
-        when (event) {
+        when (val currentEvent = event) {
             is AddTransactionEvent.Success -> {
                 viewModel.clearEvent()
                 onNavigateBack()
+            }
+            is AddTransactionEvent.MapsBackWithResult -> {
+                viewModel.clearEvent()
+                // Set the budget alert message in savedStateHandle for the previous screen
+                navController?.previousBackStackEntry?.savedStateHandle?.set("budget_alert", currentEvent.message)
+                navController?.popBackStack()
             }
             is AddTransactionEvent.Error -> {
                 viewModel.clearEvent()

@@ -13,5 +13,6 @@ interface TransactionRepository {
     suspend fun deleteTransaction(transaction: Transaction)
     fun getBudgetsWithSpending(): Flow<List<BudgetState>>
     suspend fun syncTransactions() // Sync transactions from Firestore to Room
+    suspend fun getCategorySpendingForCategory(categoryId: Int, startDate: Long, endDate: Long): Double
 }
 

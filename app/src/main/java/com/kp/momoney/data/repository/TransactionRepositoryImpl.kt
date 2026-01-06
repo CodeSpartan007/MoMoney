@@ -303,5 +303,9 @@ class TransactionRepositoryImpl @Inject constructor(
             }.sortedBy { it.category.name }
         }
     }
+    
+    override suspend fun getCategorySpendingForCategory(categoryId: Int, startDate: Long, endDate: Long): Double {
+        return transactionDao.getCategorySpendingForCategory(categoryId, startDate, endDate)
+    }
 }
 

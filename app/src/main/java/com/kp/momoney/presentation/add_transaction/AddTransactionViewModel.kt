@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.model.Transaction
+import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
+import com.kp.momoney.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,12 +23,14 @@ import javax.inject.Inject
 sealed class AddTransactionEvent {
     object Success : AddTransactionEvent()
     data class Error(val message: String) : AddTransactionEvent()
+    data class MapsBackWithResult(val message: String?) : AddTransactionEvent()
 }
 
 @HiltViewModel
 class AddTransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
+    private val budgetRepository: BudgetRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -144,8 +148,44 @@ class AddTransactionViewModel @Inject constructor(
                 // Add 3-second artificial delay
                 delay(3000)
                 
-                // Emit success event
-                _event.value = AddTransactionEvent.Success
+                // Check budget for expense transactions only
+                var budgetAlertMessage: String? = null
+                if (transactionType.equals("Expense", ignoreCase = true)) {
+                    try {
+                        val budget = budgetRepository.getBudgetForCategory(category.id)
+                        if (budget != null && budget.limitAmount > 0) {
+                            val startDate = DateUtils.getCurrentMonthStart()
+                            val endDate = DateUtils.getCurrentMonthEnd()
+                            
+                            // Get current spending for this category (includes the transaction we just saved)
+                            val totalSpending = transactionRepository.getCategorySpendingForCategory(
+                                category.id,
+                                startDate,
+                                endDate
+                            )
+                            
+                            // Determine alert message based on thresholds
+                            when {
+                                totalSpending > budget.limitAmount -> {
+                                    budgetAlertMessage = "Alert: You have exceeded your ${category.name} budget!"
+                                }
+                                totalSpending > (budget.limitAmount * 0.9) -> {
+                                    budgetAlertMessage = "Warning: You are nearing your ${category.name} budget limit."
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Log error but don't block transaction save
+                        e.printStackTrace()
+                    }
+                }
+                
+                // Emit event with budget alert message if any
+                _event.value = if (budgetAlertMessage != null) {
+                    AddTransactionEvent.MapsBackWithResult(budgetAlertMessage)
+                } else {
+                    AddTransactionEvent.Success
+                }
                 
                 // Clear form only if not in edit mode
                 if (!isEditMode) {
