@@ -42,6 +42,29 @@ class TransactionRepositoryImpl @Inject constructor(
         }
     }
     
+    override fun getTransactionsByDateRange(startDate: Long, endDate: Long): Flow<List<Transaction>> {
+        val transactionsFlow = transactionDao.getTransactionsByDateRange(startDate, endDate)
+        val categoriesFlow = categoryRepository.getAllCategories()
+        
+        return combine(transactionsFlow, categoriesFlow) { transactions, categories ->
+            val categoryMap = categories.associateBy { it.id }
+            transactions.map { entity ->
+                val category = entity.categoryId?.let { categoryMap[it] }
+                Transaction(
+                    id = entity.id,
+                    amount = entity.amount,
+                    date = Date(entity.date),
+                    note = entity.note.orEmpty(),
+                    type = entity.type,
+                    categoryId = entity.categoryId,
+                    categoryName = category?.name.orEmpty(),
+                    categoryColor = category?.color.orEmpty(),
+                    categoryIcon = category?.icon.orEmpty()
+                )
+            }
+        }
+    }
+    
     override suspend fun getTransactionById(id: Long): Transaction? {
         val entity = transactionDao.getTransactionById(id) ?: return null
         // Need to get category info

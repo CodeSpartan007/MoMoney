@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,7 +34,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,8 +52,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.presentation.common.AppLoadingAnimation
 import com.kp.momoney.presentation.reports.components.IncomeExpenseBarChart
 import com.kp.momoney.presentation.reports.components.DailyTrendChart
+import com.kp.momoney.presentation.reports.components.ReportFilterSheet
 import com.kp.momoney.util.toCurrency
 import com.kp.momoney.R
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,8 +64,23 @@ fun ReportsScreen(
     viewModel: ReportsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val filterDateRange by viewModel.filterDateRange.collectAsState()
     val selectedTabIndex = remember { mutableIntStateOf(0) }
     val context = LocalContext.current
+    var showBottomSheet by remember { mutableStateOf(false) }
+
+    // Format title based on filter
+    val titleText = remember(filterDateRange) {
+        val range = filterDateRange
+        if (range == null) {
+            "Reports"
+        } else {
+            val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+            val startFormatted = dateFormat.format(java.util.Date(range.first))
+            val endFormatted = dateFormat.format(java.util.Date(range.second))
+            "Reports ($startFormatted - $endFormatted)"
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -73,10 +94,16 @@ fun ReportsScreen(
                                 .size(32.dp)
                                 .padding(end = 8.dp)
                         )
-                        Text(text = "Reports")
+                        Text(text = titleText)
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showBottomSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Filter by Date"
+                        )
+                    }
                     IconButton(onClick = { viewModel.exportData(context) }) {
                         Icon(
                             imageVector = Icons.Default.FileDownload,
@@ -109,6 +136,25 @@ fun ReportsScreen(
                 1 -> ReportsTrendsTab(viewModel)
             }
         }
+    }
+
+    // Filter Bottom Sheet
+    if (showBottomSheet) {
+        ReportFilterSheet(
+            onDismiss = { showBottomSheet = false },
+            onApply = { startDate, endDate ->
+                val range = if (startDate != null && endDate != null) {
+                    Pair(startDate, endDate)
+                } else {
+                    null
+                }
+                viewModel.onDateRangeChanged(range)
+            },
+            onReset = {
+                viewModel.onDateRangeChanged(null)
+            },
+            currentDateRange = filterDateRange
+        )
     }
 }
 

@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.io.File
 import java.util.Calendar
 import javax.inject.Inject
@@ -42,6 +44,7 @@ data class DailyPoint(
 )
 
 @HiltViewModel
+@OptIn(ExperimentalCoroutinesApi::class)
 class ReportsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository
 ) : ViewModel() {
@@ -55,6 +58,9 @@ class ReportsViewModel @Inject constructor(
     private val _dailyTrendState = MutableStateFlow<List<DailyPoint>>(emptyList())
     val dailyTrendState: StateFlow<List<DailyPoint>> = _dailyTrendState.asStateFlow()
 
+    private val _filterDateRange = MutableStateFlow<Pair<Long, Long>?>(null)
+    val filterDateRange: StateFlow<Pair<Long, Long>?> = _filterDateRange.asStateFlow()
+
     init {
         observeTransactions()
         observeIncomeVsExpense()
@@ -63,7 +69,13 @@ class ReportsViewModel @Inject constructor(
 
     private fun observeTransactions() {
         viewModelScope.launch {
-            transactionRepository.getAllTransactions().collect { transactions ->
+            _filterDateRange.flatMapLatest { dateRange ->
+                if (dateRange == null) {
+                    transactionRepository.getAllTransactions()
+                } else {
+                    transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
+                }
+            }.collect { transactions ->
                 val expenseTransactions = transactions.filter {
                     it.type.equals("Expense", ignoreCase = true)
                 }
@@ -111,24 +123,36 @@ class ReportsViewModel @Inject constructor(
 
     private fun observeIncomeVsExpense() {
         viewModelScope.launch {
-            transactionRepository.getAllTransactions().collect { transactions ->
-                val calendar = Calendar.getInstance()
-                val currentMonth = calendar.get(Calendar.MONTH)
-                val currentYear = calendar.get(Calendar.YEAR)
+            _filterDateRange.flatMapLatest { dateRange ->
+                if (dateRange == null) {
+                    transactionRepository.getAllTransactions()
+                } else {
+                    transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
+                }
+            }.collect { transactions ->
+                // If date range is filtered, use all transactions in the range
+                // Otherwise, filter to current month (original behavior)
+                val filteredTransactions = if (_filterDateRange.value == null) {
+                    val calendar = Calendar.getInstance()
+                    val currentMonth = calendar.get(Calendar.MONTH)
+                    val currentYear = calendar.get(Calendar.YEAR)
 
-                val currentMonthTransactions = transactions.filter { transaction ->
-                    val transactionCalendar = Calendar.getInstance().apply {
-                        time = transaction.date
+                    transactions.filter { transaction ->
+                        val transactionCalendar = Calendar.getInstance().apply {
+                            time = transaction.date
+                        }
+                        transactionCalendar.get(Calendar.MONTH) == currentMonth &&
+                                transactionCalendar.get(Calendar.YEAR) == currentYear
                     }
-                    transactionCalendar.get(Calendar.MONTH) == currentMonth &&
-                            transactionCalendar.get(Calendar.YEAR) == currentYear
+                } else {
+                    transactions
                 }
 
-                val totalIncome = currentMonthTransactions
+                val totalIncome = filteredTransactions
                     .filter { it.type.equals("Income", ignoreCase = true) }
                     .sumOf { it.amount }
 
-                val totalExpense = currentMonthTransactions
+                val totalExpense = filteredTransactions
                     .filter { it.type.equals("Expense", ignoreCase = true) }
                     .sumOf { it.amount }
 
@@ -142,35 +166,69 @@ class ReportsViewModel @Inject constructor(
 
     private fun observeDailyTrend() {
         viewModelScope.launch {
-            transactionRepository.getAllTransactions().collect { transactions ->
-                val calendar = Calendar.getInstance()
-                val currentMonth = calendar.get(Calendar.MONTH)
-                val currentYear = calendar.get(Calendar.YEAR)
-                val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+            _filterDateRange.flatMapLatest { dateRange ->
+                if (dateRange == null) {
+                    transactionRepository.getAllTransactions()
+                } else {
+                    transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
+                }
+            }.collect { transactions ->
+                val dateRange = _filterDateRange.value
+                
+                // If date range is filtered, use the filtered range
+                // Otherwise, use current month (original behavior)
+                val expenses = if (dateRange == null) {
+                    val calendar = Calendar.getInstance()
+                    val currentMonth = calendar.get(Calendar.MONTH)
+                    val currentYear = calendar.get(Calendar.YEAR)
 
-                val currentMonthExpenses = transactions.filter { transaction ->
-                    val transactionCalendar = Calendar.getInstance().apply {
-                        time = transaction.date
+                    transactions.filter { transaction ->
+                        val transactionCalendar = Calendar.getInstance().apply {
+                            time = transaction.date
+                        }
+                        transactionCalendar.get(Calendar.MONTH) == currentMonth &&
+                                transactionCalendar.get(Calendar.YEAR) == currentYear &&
+                                transaction.type.equals("Expense", ignoreCase = true)
                     }
-                    transactionCalendar.get(Calendar.MONTH) == currentMonth &&
-                            transactionCalendar.get(Calendar.YEAR) == currentYear &&
-                            transaction.type.equals("Expense", ignoreCase = true)
+                } else {
+                    transactions.filter { transaction ->
+                        transaction.type.equals("Expense", ignoreCase = true)
+                    }
+                }
+
+                // Determine the day range
+                val calendar = Calendar.getInstance()
+                val daysInRange = if (dateRange == null) {
+                    // Current month
+                    calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+                } else {
+                    // Calculate days between start and end date
+                    val startCal = Calendar.getInstance().apply {
+                        timeInMillis = dateRange.first
+                    }
+                    val endCal = Calendar.getInstance().apply {
+                        timeInMillis = dateRange.second
+                    }
+                    val daysDiff = ((dateRange.second - dateRange.first) / (1000 * 60 * 60 * 24)).toInt() + 1
+                    daysDiff.coerceAtMost(31) // Cap at 31 days for display
                 }
 
                 val dailyMap = mutableMapOf<Int, Double>()
                 
                 // Initialize all days with 0.0
-                for (day in 1..daysInMonth) {
+                for (day in 1..daysInRange) {
                     dailyMap[day] = 0.0
                 }
 
                 // Group expenses by day
-                currentMonthExpenses.forEach { transaction ->
+                expenses.forEach { transaction ->
                     val transactionCalendar = Calendar.getInstance().apply {
                         time = transaction.date
                     }
                     val day = transactionCalendar.get(Calendar.DAY_OF_MONTH)
-                    dailyMap[day] = dailyMap.getOrDefault(day, 0.0) + transaction.amount
+                    if (day <= daysInRange) {
+                        dailyMap[day] = dailyMap.getOrDefault(day, 0.0) + transaction.amount
+                    }
                 }
 
                 val dailyPoints = dailyMap.map { (day, amount) ->
@@ -180,6 +238,10 @@ class ReportsViewModel @Inject constructor(
                 _dailyTrendState.value = dailyPoints
             }
         }
+    }
+
+    fun onDateRangeChanged(newRange: Pair<Long, Long>?) {
+        _filterDateRange.value = newRange
     }
 
     fun exportData(context: Context) {
