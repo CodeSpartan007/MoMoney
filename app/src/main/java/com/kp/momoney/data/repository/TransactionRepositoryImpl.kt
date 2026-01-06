@@ -10,6 +10,7 @@ import com.kp.momoney.data.mapper.toFirestoreMap
 import com.kp.momoney.data.mapper.toFirestoreTransactionData
 import com.kp.momoney.domain.model.BudgetState
 import com.kp.momoney.domain.model.Category
+import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
@@ -59,7 +60,8 @@ class TransactionRepositoryImpl @Inject constructor(
                     categoryId = entity.categoryId,
                     categoryName = category?.name.orEmpty(),
                     categoryColor = category?.color.orEmpty(),
-                    categoryIcon = category?.icon.orEmpty()
+                    categoryIcon = category?.icon.orEmpty(),
+                    recurrence = Recurrence.fromString(entity.recurrence)
                 )
             }
         }
@@ -78,7 +80,8 @@ class TransactionRepositoryImpl @Inject constructor(
             categoryId = entity.categoryId,
             categoryName = category?.name.orEmpty(),
             categoryColor = category?.colorHex.orEmpty(),
-            categoryIcon = category?.iconName.orEmpty()
+            categoryIcon = category?.iconName.orEmpty(),
+            recurrence = Recurrence.fromString(entity.recurrence)
         )
     }
     
@@ -186,7 +189,8 @@ class TransactionRepositoryImpl @Inject constructor(
             categoryId = transaction.categoryId,
             categoryName = category?.name.orEmpty(),
             categoryColor = category?.colorHex.orEmpty(),
-            categoryIcon = category?.iconName.orEmpty()
+            categoryIcon = category?.iconName.orEmpty(),
+            recurrence = Recurrence.fromString(transaction.recurrence)
         )
     }
     
@@ -200,7 +204,8 @@ class TransactionRepositoryImpl @Inject constructor(
             paymentMethod = "",
             tags = null,
             categoryId = categoryId,
-            firestoreId = firestoreId
+            firestoreId = firestoreId,
+            recurrence = recurrence.name
         )
     }
     

@@ -11,6 +11,7 @@ data class Transaction(
     val categoryId: Int?,
     val categoryName: String,
     val categoryColor: String,
-    val categoryIcon: String
+    val categoryIcon: String,
+    val recurrence: Recurrence = Recurrence.NEVER
 )
 

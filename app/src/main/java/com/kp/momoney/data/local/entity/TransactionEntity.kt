@@ -47,6 +47,9 @@ data class TransactionEntity(
     val categoryId: Int?,
     
     @ColumnInfo(name = "firestore_id")
-    val firestoreId: String? = null // Firestore document ID
+    val firestoreId: String? = null, // Firestore document ID
+    
+    @ColumnInfo(name = "recurrence")
+    val recurrence: String = "NEVER" // Recurrence pattern: NEVER, WEEKLY, MONTHLY
 )
 

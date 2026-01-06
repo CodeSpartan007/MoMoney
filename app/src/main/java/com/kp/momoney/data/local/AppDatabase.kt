@@ -16,7 +16,7 @@ import com.kp.momoney.data.local.entity.TransactionEntity
         TransactionEntity::class,
         BudgetEntity::class
     ],
-    version = 4, // Incremented to add userId and firestoreId columns to CategoryEntity
+    version = 5, // Incremented to add recurrence column to TransactionEntity
     exportSchema = false
 )
 @TypeConverters(Converters::class)

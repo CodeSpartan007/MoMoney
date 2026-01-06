@@ -2,6 +2,7 @@ package com.kp.momoney.data.mapper
 
 import com.google.firebase.firestore.DocumentSnapshot
 import com.kp.momoney.data.local.entity.TransactionEntity
+import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.domain.model.Transaction
 import java.util.Date
 import java.util.UUID
@@ -23,6 +24,7 @@ fun Transaction.toFirestoreMap(firestoreId: String? = null): HashMap<String, Any
     map["categoryIcon"] = categoryIcon
     map["paymentMethod"] = "" // Default empty, can be extended later
     map["tags"] = emptyList<String>() // Default empty list
+    map["recurrence"] = recurrence.name // Store enum name as string
     
     return map
 }
@@ -48,6 +50,7 @@ fun DocumentSnapshot.toFirestoreTransactionData(): FirestoreTransactionData? {
         val type = getString("type") ?: return null
         val paymentMethod = getString("paymentMethod") ?: ""
         val categoryName = getString("categoryName")
+        val recurrenceString = getString("recurrence") ?: "NEVER"
         
         // Handle tags - can be List<String> or null
         val tagsList = get("tags") as? List<*>
@@ -66,7 +69,8 @@ fun DocumentSnapshot.toFirestoreTransactionData(): FirestoreTransactionData? {
             paymentMethod = paymentMethod,
             tags = tagsString,
             categoryId = null, // Will be resolved from categoryName
-            firestoreId = firestoreId
+            firestoreId = firestoreId,
+            recurrence = recurrenceString
         )
         
         FirestoreTransactionData(entity, categoryName)
@@ -97,6 +101,7 @@ fun TransactionEntity.toFirestoreMap(): HashMap<String, Any> {
     map["categoryName"] = ""
     map["categoryColor"] = ""
     map["categoryIcon"] = ""
+    map["recurrence"] = recurrence
     
     return map
 }
