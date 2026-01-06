@@ -1,6 +1,7 @@
 package com.kp.momoney.presentation.add_transaction
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -49,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.kp.momoney.R
+import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.presentation.common.AppLoadingAnimation
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -67,6 +70,7 @@ fun AddTransactionScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val event by viewModel.event.collectAsState()
     val transactionDate by viewModel.transactionDate.collectAsState()
+    val recurrence by viewModel.recurrence.collectAsState()
     val isEditMode = viewModel.isEditMode
 
     var isCategoryExpanded by remember { mutableStateOf(false) }
@@ -176,6 +180,39 @@ fun AddTransactionScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Recurrence Selector
+                    Text(
+                        text = "Repeat",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = recurrence == Recurrence.NEVER,
+                            onClick = { viewModel.onRecurrenceChange(Recurrence.NEVER) },
+                            label = { Text("Never") },
+                            enabled = !isLoading
+                        )
+                        FilterChip(
+                            selected = recurrence == Recurrence.WEEKLY,
+                            onClick = { viewModel.onRecurrenceChange(Recurrence.WEEKLY) },
+                            label = { Text("Weekly") },
+                            enabled = !isLoading
+                        )
+                        FilterChip(
+                            selected = recurrence == Recurrence.MONTHLY,
+                            onClick = { viewModel.onRecurrenceChange(Recurrence.MONTHLY) },
+                            label = { Text("Monthly") },
+                            enabled = !isLoading
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 

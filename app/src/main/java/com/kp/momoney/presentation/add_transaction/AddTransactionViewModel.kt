@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Category
+import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
@@ -38,6 +39,7 @@ class AddTransactionViewModel @Inject constructor(
     val note = MutableStateFlow("")
     val selectedCategory = MutableStateFlow<Category?>(null)
     val transactionDate = MutableStateFlow(System.currentTimeMillis())
+    val recurrence = MutableStateFlow<Recurrence>(Recurrence.NEVER)
     
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
@@ -66,6 +68,7 @@ class AddTransactionViewModel @Inject constructor(
                     amount.value = transaction.amount.toString()
                     note.value = transaction.note
                     transactionDate.value = transaction.date.time
+                    recurrence.value = transaction.recurrence
                     
                     // Find and set the category
                     val categories = categoryRepository.getAllCategories()
@@ -132,7 +135,8 @@ class AddTransactionViewModel @Inject constructor(
             categoryId = category.id,
             categoryName = category.name,
             categoryColor = category.color,
-            categoryIcon = category.icon
+            categoryIcon = category.icon,
+            recurrence = recurrence.value
         )
         
         viewModelScope.launch {
@@ -193,6 +197,7 @@ class AddTransactionViewModel @Inject constructor(
                     note.value = ""
                     selectedCategory.value = null
                     transactionDate.value = System.currentTimeMillis()
+                    recurrence.value = Recurrence.NEVER
                 }
             } catch (e: Exception) {
                 _event.value = AddTransactionEvent.Error("Failed to save transaction: ${e.message}")
@@ -208,6 +213,10 @@ class AddTransactionViewModel @Inject constructor(
     
     fun onDateChange(newDate: Long) {
         transactionDate.value = newDate
+    }
+    
+    fun onRecurrenceChange(newRecurrence: Recurrence) {
+        recurrence.value = newRecurrence
     }
 }
 
