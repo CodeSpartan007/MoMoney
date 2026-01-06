@@ -322,85 +322,44 @@ class TransactionRepositoryImpl @Inject constructor(
             Log.d("RecurrenceWorker", "Found ${recurringEntities.size} recurring transactions")
             
             val currentTime = System.currentTimeMillis()
-            val today = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
             
-            recurringEntities.forEach { entity ->
-                val recurrence = Recurrence.fromString(entity.recurrence)
+            recurringEntities.forEach { originalEntity ->
+                val recurrence = Recurrence.fromString(originalEntity.recurrence)
                 if (recurrence == Recurrence.NEVER) return@forEach
                 
-                val transactionDate = entity.date
-                val nextDate = calculateNextDate(transactionDate, recurrence)
+                val originalDate = originalEntity.date
+                val nextDueDate = calculateNextDate(originalDate, recurrence)
                 
-                // Check if the next date has passed (transaction is due)
-                if (nextDate <= currentTime) {
-                    Log.d("RecurrenceWorker", "Processing recurring transaction ID: ${entity.id}, Next date: $nextDate, Current: $currentTime")
+                // Check if the next due date has passed (transaction is due)
+                if (nextDueDate <= currentTime) {
+                    Log.d("RecurrenceWorker", "Processing recurring transaction ID: ${originalEntity.id}, Original date: $originalDate, Next due date: $nextDueDate")
                     
-                    // Check if a child transaction already exists for this expected date
-                    // We'll check if there's a transaction with the same amount, category, and date within a day range
-                    val startOfDay = Calendar.getInstance().apply {
-                        timeInMillis = nextDate
-                        set(Calendar.HOUR_OF_DAY, 0)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
+                    // Step A: Create History Record
+                    // Get category info for the history record
+                    val category = originalEntity.categoryId?.let { categoryDao.getCategoryById(it) }
                     
-                    val endOfDay = Calendar.getInstance().apply {
-                        timeInMillis = nextDate
-                        set(Calendar.HOUR_OF_DAY, 23)
-                        set(Calendar.MINUTE, 59)
-                        set(Calendar.SECOND, 59)
-                        set(Calendar.MILLISECOND, 999)
-                    }.timeInMillis
+                    // Create history record with the OLD date (originalTransaction.date)
+                    val historyRecord = Transaction(
+                        id = 0, // Room will generate a new ID
+                        amount = originalEntity.amount,
+                        date = Date(originalDate), // The OLD date
+                        note = originalEntity.note ?: "",
+                        type = originalEntity.type,
+                        categoryId = originalEntity.categoryId,
+                        categoryName = category?.name.orEmpty(),
+                        categoryColor = category?.colorHex.orEmpty(),
+                        categoryIcon = category?.iconName.orEmpty(),
+                        recurrence = Recurrence.NEVER // History doesn't recur
+                    )
                     
-                    val existingTransactions = transactionDao.getTransactionsByDateRange(startOfDay, endOfDay)
-                    val existingList = existingTransactions.first()
+                    // Insert the history record
+                    insertTransaction(historyRecord)
+                    Log.d("RecurrenceWorker", "Created history record for original transaction ID: ${originalEntity.id} with date: $originalDate")
                     
-                    // Check if a duplicate already exists (same amount, category, and note)
-                    val duplicateExists = existingList.any { existing ->
-                        existing.amount == entity.amount &&
-                        existing.categoryId == entity.categoryId &&
-                        existing.note == entity.note &&
-                        existing.type == entity.type
-                    }
-                    
-                    if (!duplicateExists) {
-                        // Get category info for the new transaction
-                        val category = entity.categoryId?.let { categoryDao.getCategoryById(it) }
-                        
-                        // Create a new child transaction with recurrence = NEVER
-                        val childTransaction = Transaction(
-                            id = 0, // New transaction
-                            amount = entity.amount,
-                            date = Date(nextDate),
-                            note = entity.note ?: "",
-                            type = entity.type,
-                            categoryId = entity.categoryId,
-                            categoryName = category?.name.orEmpty(),
-                            categoryColor = category?.colorHex.orEmpty(),
-                            categoryIcon = category?.iconName.orEmpty(),
-                            recurrence = Recurrence.NEVER // Child transactions don't recur
-                        )
-                        
-                        // Insert the child transaction
-                        insertTransaction(childTransaction)
-                        Log.d("RecurrenceWorker", "Created child transaction for parent ID: ${entity.id}")
-                        
-                        // Update the parent transaction's date to the next date
-                        val updatedEntity = entity.copy(date = nextDate)
-                        transactionDao.updateTransaction(updatedEntity)
-                        Log.d("RecurrenceWorker", "Updated parent transaction ID: ${entity.id} to next date: $nextDate")
-                    } else {
-                        Log.d("RecurrenceWorker", "Duplicate transaction already exists for parent ID: ${entity.id}, skipping")
-                        // Still update the parent date to prevent reprocessing
-                        val updatedEntity = entity.copy(date = nextDate)
-                        transactionDao.updateTransaction(updatedEntity)
-                    }
+                    // Step B: Update Schedule - Move the original transaction forward
+                    val updatedEntity = originalEntity.copy(date = nextDueDate)
+                    transactionDao.updateTransaction(updatedEntity)
+                    Log.d("RecurrenceWorker", "Updated original transaction ID: ${originalEntity.id} to next due date: $nextDueDate")
                 }
             }
             
