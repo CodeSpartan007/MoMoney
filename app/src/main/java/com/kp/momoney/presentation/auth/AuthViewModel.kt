@@ -1,5 +1,6 @@
 package com.kp.momoney.presentation.auth
 
+import android.content.Intent
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,7 +27,8 @@ sealed class AuthState {
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val transactionRepository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val googleAuthClient: com.kp.momoney.data.auth.GoogleAuthClient
 ) : ViewModel() {
 
     private val _email = MutableStateFlow("")
@@ -120,6 +122,38 @@ class AuthViewModel @Inject constructor(
 
     fun resetState() {
         _authState.value = AuthState.Idle
+    }
+
+    fun getGoogleSignInIntent(): Intent {
+        return googleAuthClient.getSignInIntent()
+    }
+
+    fun onGoogleSignInResult(intent: Intent) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            googleAuthClient.signInWithIntent(intent).collect { result ->
+                result.fold(
+                    onSuccess = { user ->
+                        // Sync user data (Transactions + Categories) from Firestore
+                        try {
+                            transactionRepository.syncTransactions()
+                            categoryRepository.syncCategories()
+                            
+                            // Delay to simulate heavy download and allow user to enjoy the animation
+                            delay(3000)
+                            
+                            _authState.value = AuthState.Success(user)
+                        } catch (e: Exception) {
+                            // Even if sync fails, login is successful
+                            _authState.value = AuthState.Success(user)
+                        }
+                    },
+                    onFailure = { error ->
+                        _authState.value = AuthState.Error(error.message ?: "Google Sign-In failed")
+                    }
+                )
+            }
+        }
     }
 
     private fun validate(email: String, password: String): String? {

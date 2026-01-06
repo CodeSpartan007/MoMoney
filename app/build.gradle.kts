@@ -84,6 +84,9 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     
+    // Google Sign-In
+    implementation(libs.play.services.auth)
+    
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.json)
     

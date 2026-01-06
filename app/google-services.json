@@ -12,7 +12,20 @@
           "package_name": "com.kp.momoney"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "410515666298-cn3khkav1e81bqgfjaf83com6h6ek9n4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kp.momoney",
+            "certificate_hash": "c53b126d20e6effdf869b82db89f8f172192ed2b"
+          }
+        },
+        {
+          "client_id": "410515666298-s3tuhg7k07asdituui0grqd2rkqjaedt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBLcu7oORT3S_y7akskmUFuTticmxp6R-0"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "410515666298-s3tuhg7k07asdituui0grqd2rkqjaedt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
