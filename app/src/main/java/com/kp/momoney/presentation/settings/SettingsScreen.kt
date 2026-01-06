@@ -65,7 +65,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val userEmail = FirebaseAuth.getInstance().currentUser?.email ?: ""
-    val currentTheme by viewModel.currentTheme.collectAsState(initial = AppTheme.SYSTEM)
+    val currentTheme by viewModel.currentTheme.collectAsState(initial = AppTheme.LIGHT)
 
     Scaffold(
         topBar = {
@@ -155,28 +155,39 @@ fun SettingsScreen(
                             text = "Theme",
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            ThemeOption(
-                                label = "System",
-                                theme = AppTheme.SYSTEM,
-                                selected = currentTheme == AppTheme.SYSTEM,
-                                onClick = { viewModel.setTheme(AppTheme.SYSTEM) }
-                            )
-                            ThemeOption(
-                                label = "Light",
-                                theme = AppTheme.LIGHT,
-                                selected = currentTheme == AppTheme.LIGHT,
-                                onClick = { viewModel.setTheme(AppTheme.LIGHT) }
-                            )
-                            ThemeOption(
-                                label = "Dark",
-                                theme = AppTheme.DARK,
-                                selected = currentTheme == AppTheme.DARK,
-                                onClick = { viewModel.setTheme(AppTheme.DARK) }
-                            )
+                            // First row: System and Light
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                ThemeOption(
+                                    label = "System",
+                                    theme = AppTheme.SYSTEM,
+                                    selected = currentTheme == AppTheme.SYSTEM,
+                                    onClick = { viewModel.setTheme(AppTheme.SYSTEM) }
+                                )
+                                ThemeOption(
+                                    label = "Light",
+                                    theme = AppTheme.LIGHT,
+                                    selected = currentTheme == AppTheme.LIGHT,
+                                    onClick = { viewModel.setTheme(AppTheme.LIGHT) }
+                                )
+                            }
+                            // Second row: Dark (centered)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                ThemeOption(
+                                    label = "Dark",
+                                    theme = AppTheme.DARK,
+                                    selected = currentTheme == AppTheme.DARK,
+                                    onClick = { viewModel.setTheme(AppTheme.DARK) }
+                                )
+                            }
                         }
                     }
                     
@@ -197,6 +208,8 @@ fun SettingsScreen(
                                     name = name,
                                     isSelected = themeConfig.seedColor == color,
                                     onClick = {
+                                        // Persist the seed color selection
+                                        viewModel.setSeedColor(color)
                                         onThemeChanged(themeConfig.copy(seedColor = color))
                                     }
                                 )
@@ -272,7 +285,7 @@ fun SettingsScreen(
 @Composable
 private fun ThemeOption(
     label: String,
-    theme: AppTheme,
+    @Suppress("UNUSED_PARAMETER") theme: AppTheme,
     selected: Boolean,
     onClick: () -> Unit
 ) {

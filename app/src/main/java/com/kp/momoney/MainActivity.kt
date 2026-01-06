@@ -48,7 +48,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val viewModel: MainViewModel = hiltViewModel()
-            val appTheme by viewModel.theme.collectAsState(initial = AppTheme.SYSTEM)
+            val appTheme by viewModel.theme.collectAsState(initial = AppTheme.LIGHT)
+            val seedColor by viewModel.seedColor.collectAsState(initial = SunYellow)
             
             // Determine isDarkTheme based on AppTheme
             val isDarkTheme = when (appTheme) {
@@ -57,10 +58,7 @@ class MainActivity : ComponentActivity() {
                 AppTheme.SYSTEM -> isSystemInDarkTheme()
             }
             
-            // Remember seed color (can be changed by user)
-            var seedColor by remember { mutableStateOf(SunYellow) }
-            
-            // Create themeConfig with DataStore-controlled isDark and user-controlled seedColor
+            // Create themeConfig with DataStore-controlled isDark and seedColor
             val themeConfig = remember(isDarkTheme, seedColor) { 
                 AppThemeConfig(seedColor = seedColor, isDark = isDarkTheme)
             }
@@ -73,8 +71,8 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         themeConfig = themeConfig,
                         onThemeChanged = { newConfig ->
-                            // Only update seedColor, isDark comes from DataStore
-                            seedColor = newConfig.seedColor
+                            // This will be handled by SettingsViewModel
+                            // The seedColor is already persisted via DataStore
                         }
                     )
                 }

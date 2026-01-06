@@ -6,6 +6,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.ui.graphics.Color
 import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.data.local.UserPreferencesRepository
 import com.kp.momoney.domain.repository.TransactionRepository
@@ -37,6 +38,15 @@ class SettingsViewModel @Inject constructor(
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch {
             userPreferencesRepository.setTheme(theme)
+        }
+    }
+
+    /**
+     * Set the seed color preference
+     */
+    fun setSeedColor(color: Color) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSeedColor(color)
         }
     }
 
