@@ -277,18 +277,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Currency Selection Bottom Sheet
-            if (showCurrencySheet) {
-                CurrencySelectionSheet(
-                    onDismiss = { showCurrencySheet = false },
-                    currentCurrencyCode = currentCurrency.currencyCode,
-                    isUpdating = isUpdatingCurrency,
-                    onCurrencySelected = { code ->
-                        viewModel.updateCurrency(code)
-                    }
-                )
-            }
-
             // Account Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -331,6 +319,18 @@ fun SettingsScreen(
                 }
             }
         }
+        
+        // Currency Selection Bottom Sheet - placed outside Column to avoid recomposition issues
+        if (showCurrencySheet) {
+            CurrencySelectionSheet(
+                onDismiss = { showCurrencySheet = false },
+                currentCurrencyCode = currentCurrency.currencyCode,
+                isUpdating = isUpdatingCurrency,
+                onCurrencySelected = { code ->
+                    viewModel.updateCurrency(code)
+                }
+            )
+        }
     }
 }
 
@@ -354,13 +354,17 @@ private fun CurrencySelectionSheet(
         "INR" to "₹"
     )
     
-    // Close sheet when update completes
+    // Track previous updating state to detect transition from true to false
+    var wasUpdating by remember { mutableStateOf(false) }
+    
+    // Close sheet when update completes (only when transitioning from updating to not updating)
     LaunchedEffect(isUpdating) {
-        if (!isUpdating) {
-            // Small delay to show success state
-            kotlinx.coroutines.delay(300)
+        if (wasUpdating && !isUpdating) {
+            // Update just completed - show success state briefly then dismiss
+            kotlinx.coroutines.delay(500)
             onDismiss()
         }
+        wasUpdating = isUpdating
     }
     
     ModalBottomSheet(
