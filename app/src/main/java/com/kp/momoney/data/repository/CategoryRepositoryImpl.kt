@@ -10,8 +10,12 @@ import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.repository.CategoryRepository
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import android.util.Log
 
@@ -20,6 +24,9 @@ class CategoryRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth
 ) : CategoryRepository {
+    
+    // Background scope for fire-and-forget Firestore operations
+    private val backgroundScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     private val currentUserId: String?
         get() = auth.currentUser?.uid
@@ -53,21 +60,25 @@ class CategoryRepositoryImpl @Inject constructor(
         categoryDao.insertCategory(category)
         Log.d("CategoryRepo", "Category saved to Room: ${category.name} (firestoreId: ${category.firestoreId})")
         
-        // Step 2: Save to Firestore users/{uid}/categories immediately
-        try {
-            val firestoreMap = category.toFirestoreMap()
-            firestore.collection("users")
-                .document(userId)
-                .collection("categories")
-                .document(category.firestoreId)
-                .set(firestoreMap)
-                .await()
-            Log.d("CategoryRepo", "Category synced to Firestore: ${category.firestoreId}")
-        } catch (e: Exception) {
-            Log.e("CategoryRepo", "Failed to sync category to Firestore", e)
-            // Continue even if Firestore sync fails - local data is saved
-            // The category will be synced on next sync operation
+        // Step 2: Fire-and-forget: Launch Firestore sync in background
+        // Return immediately without waiting for network
+        backgroundScope.launch {
+            try {
+                val firestoreMap = category.toFirestoreMap()
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("categories")
+                    .document(category.firestoreId)
+                    .set(firestoreMap)
+                    .await()
+                Log.d("CategoryRepo", "Category synced to Firestore: ${category.firestoreId}")
+            } catch (e: Exception) {
+                Log.e("CategoryRepo", "Failed to sync category to Firestore", e)
+                // Firestore SDK will queue the operation automatically when offline
+                // The category will be synced when connection is restored
+            }
         }
+        // Method returns immediately here - no await() blocking
     }
     
     override suspend fun syncCategories() {
@@ -151,58 +162,64 @@ class CategoryRepositoryImpl @Inject constructor(
         val categoryName = category.name
         val firestoreId = category.firestoreId
         
-        // Delete from Room first (cascading delete will handle related transactions/budgets locally)
+        // Step 1: Delete from Room immediately (cascading delete will handle related transactions/budgets locally)
         categoryDao.deleteCategory(categoryId)
+        Log.d("CategoryRepo", "Category deleted from Room: $categoryId")
         
-        // Also delete from Firestore if user is authenticated
+        // Step 2: Fire-and-forget: Launch Firestore deletion in background
+        // Return immediately without waiting for network
         currentUserId?.let { userId ->
             firestoreId?.let { fsId ->
-                try {
-                    // Use batched write for atomic deletion
-                    val batch = firestore.batch()
-                    
-                    // Step 1: Delete the category document
-                    val categoryRef = firestore.collection("users")
-                        .document(userId)
-                        .collection("categories")
-                        .document(fsId)
-                    batch.delete(categoryRef)
-                    
-                    // Step 2: Query and delete related transactions (by categoryName)
-                    val transactionsSnapshot = firestore.collection("users")
-                        .document(userId)
-                        .collection("transactions")
-                        .whereEqualTo("categoryName", categoryName)
-                        .get()
-                        .await()
-                    
-                    transactionsSnapshot.documents.forEach { doc ->
-                        batch.delete(doc.reference)
+                backgroundScope.launch {
+                    try {
+                        // Use batched write for atomic deletion
+                        val batch = firestore.batch()
+                        
+                        // Step 1: Delete the category document
+                        val categoryRef = firestore.collection("users")
+                            .document(userId)
+                            .collection("categories")
+                            .document(fsId)
+                        batch.delete(categoryRef)
+                        
+                        // Step 2: Query and delete related transactions (by categoryName)
+                        val transactionsSnapshot = firestore.collection("users")
+                            .document(userId)
+                            .collection("transactions")
+                            .whereEqualTo("categoryName", categoryName)
+                            .get()
+                            .await()
+                        
+                        transactionsSnapshot.documents.forEach { doc ->
+                            batch.delete(doc.reference)
+                        }
+                        Log.d("CategoryRepo", "Found ${transactionsSnapshot.documents.size} transactions to delete")
+                        
+                        // Step 3: Query and delete related budgets (by categoryId - local ID)
+                        val budgetsSnapshot = firestore.collection("users")
+                            .document(userId)
+                            .collection("budgets")
+                            .whereEqualTo("categoryId", categoryId.toLong())
+                            .get()
+                            .await()
+                        
+                        budgetsSnapshot.documents.forEach { doc ->
+                            batch.delete(doc.reference)
+                        }
+                        Log.d("CategoryRepo", "Found ${budgetsSnapshot.documents.size} budgets to delete")
+                        
+                        // Commit the batch
+                        batch.commit().await()
+                        Log.d("CategoryRepo", "Category and related data deleted from Firestore: $fsId")
+                    } catch (e: Exception) {
+                        Log.e("CategoryRepo", "Failed to delete category from Firestore", e)
+                        // Firestore SDK will queue the operation automatically when offline
+                        // The deletion will be synced when connection is restored
                     }
-                    Log.d("CategoryRepo", "Found ${transactionsSnapshot.documents.size} transactions to delete")
-                    
-                    // Step 3: Query and delete related budgets (by categoryId - local ID)
-                    val budgetsSnapshot = firestore.collection("users")
-                        .document(userId)
-                        .collection("budgets")
-                        .whereEqualTo("categoryId", categoryId.toLong())
-                        .get()
-                        .await()
-                    
-                    budgetsSnapshot.documents.forEach { doc ->
-                        batch.delete(doc.reference)
-                    }
-                    Log.d("CategoryRepo", "Found ${budgetsSnapshot.documents.size} budgets to delete")
-                    
-                    // Commit the batch
-                    batch.commit().await()
-                    Log.d("CategoryRepo", "Category and related data deleted from Firestore: $fsId")
-                } catch (e: Exception) {
-                    Log.e("CategoryRepo", "Failed to delete category from Firestore", e)
-                    // Continue even if Firestore delete fails - local data is deleted
                 }
             }
         }
+        // Method returns immediately here - no await() blocking
     }
     
     private fun com.kp.momoney.data.local.entity.CategoryEntity.toDomain(): Category {

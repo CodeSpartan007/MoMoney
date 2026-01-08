@@ -64,7 +64,7 @@ fun SettingsScreen(
     onThemeChanged: (AppThemeConfig) -> Unit
 ) {
     val context = LocalContext.current
-    val userEmail = FirebaseAuth.getInstance().currentUser?.email ?: ""
+    val userEmail = viewModel.userEmail
     val currentTheme by viewModel.currentTheme.collectAsState(initial = AppTheme.LIGHT)
 
     Scaffold(

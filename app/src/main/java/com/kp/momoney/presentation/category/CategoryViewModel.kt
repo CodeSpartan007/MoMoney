@@ -2,10 +2,10 @@ package com.kp.momoney.presentation.category
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kp.momoney.data.util.ConnectivityObserver
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.repository.CategoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,7 +22,8 @@ sealed class CategoryEvent {
 
 @HiltViewModel
 class CategoryViewModel @Inject constructor(
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
 
     // Form state
@@ -62,6 +63,21 @@ class CategoryViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    /**
+     * Boolean state indicating if the device is offline
+     * True when status is Lost or Unavailable
+     */
+    val isOffline: StateFlow<Boolean> = connectivityObserver.observe()
+        .map { status ->
+            status == ConnectivityObserver.Status.Lost || 
+            status == ConnectivityObserver.Status.Unavailable
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = false
+        )
+
     fun createCategory() {
         val name = categoryName.value.trim()
         
@@ -86,14 +102,13 @@ class CategoryViewModel @Inject constructor(
                     color = selectedColor.value
                 )
                 
-                // Delay to allow user to enjoy the animation while background sync happens
-                delay(3000)
-                
-                // Reset form
+                // Repository returns immediately (optimistic update)
+                // Reset form immediately
                 categoryName.value = ""
                 categoryType.value = "Expense"
                 selectedColor.value = "FF9800"
                 
+                // Set loading to false immediately after repository call returns
                 _isLoading.value = false
                 
                 // Show success event
@@ -154,9 +169,8 @@ class CategoryViewModel @Inject constructor(
                 
                 categoryRepository.deleteCategory(categoryId)
                 
-                // Delay to show the animation
-                delay(4000)
-                
+                // Repository returns immediately (optimistic update)
+                // Set loading to false immediately after repository call returns
                 _isLoadingDelete.value = false
                 _selectedCategoryId.value = null
                 

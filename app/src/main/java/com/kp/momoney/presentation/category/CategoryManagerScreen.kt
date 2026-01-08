@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.R
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.presentation.common.LoadingOverlay
+import com.kp.momoney.presentation.common.OfflineBanner
 import com.kp.momoney.util.getIconByName
 import java.util.Locale
 
@@ -88,6 +89,7 @@ fun CategoryManagerScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
     val isLoadingDelete by viewModel.isLoadingDelete.collectAsState()
+    val isOffline by viewModel.isOffline.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -339,6 +341,12 @@ fun CategoryManagerScreen(
                     com.kp.momoney.presentation.common.AppLoadingAnimation()
                 }
             }
+            
+            // Offline Banner at the bottom
+            OfflineBanner(
+                isOffline = isOffline,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
         
         // Confirmation Dialog

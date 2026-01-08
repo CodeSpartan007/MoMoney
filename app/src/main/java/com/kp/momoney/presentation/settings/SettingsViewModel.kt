@@ -25,7 +25,7 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val userEmail: String
-        get() = firebaseAuth.currentUser?.email ?: ""
+        get() = firebaseAuth.currentUser?.email ?: "Guest"
 
     /**
      * Current theme preference as a Flow
