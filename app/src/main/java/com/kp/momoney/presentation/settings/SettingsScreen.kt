@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,9 +41,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.kp.momoney.data.local.CurrencyPreference
 import com.kp.momoney.ui.theme.AppThemeConfig
 import com.kp.momoney.ui.theme.ThemeSeeds
 import com.kp.momoney.R
@@ -68,6 +78,11 @@ fun SettingsScreen(
     val context = LocalContext.current
     val userEmail = viewModel.userEmail
     val isDarkTheme by viewModel.isDarkTheme.collectAsState(initial = false)
+    val currentCurrency by viewModel.currentCurrency.collectAsState(
+        initial = CurrencyPreference("KES", "KSh", 1.0f)
+    )
+    val isUpdatingCurrency by viewModel.isUpdatingCurrency.collectAsState()
+    var showCurrencySheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -211,6 +226,37 @@ fun SettingsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                     
+                    // Currency Selector Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showCurrencySheet = true },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AttachMoney,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Currency",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        Text(
+                            text = "${currentCurrency.currencyCode} (${currentCurrency.currencySymbol})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    HorizontalDivider()
+                    
                     Button(
                         onClick = { viewModel.exportData(context) },
                         modifier = Modifier.fillMaxWidth(),
@@ -229,6 +275,18 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+            
+            // Currency Selection Bottom Sheet
+            if (showCurrencySheet) {
+                CurrencySelectionSheet(
+                    onDismiss = { showCurrencySheet = false },
+                    currentCurrencyCode = currentCurrency.currencyCode,
+                    isUpdating = isUpdatingCurrency,
+                    onCurrencySelected = { code ->
+                        viewModel.updateCurrency(code)
+                    }
+                )
             }
 
             // Account Section
@@ -272,6 +330,107 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CurrencySelectionSheet(
+    onDismiss: () -> Unit,
+    currentCurrencyCode: String,
+    isUpdating: Boolean,
+    onCurrencySelected: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val majorCurrencies = listOf(
+        "KES" to "KSh",
+        "USD" to "$",
+        "EUR" to "€",
+        "GBP" to "£",
+        "CAD" to "C$",
+        "AUD" to "A$",
+        "JPY" to "¥",
+        "INR" to "₹"
+    )
+    
+    // Close sheet when update completes
+    LaunchedEffect(isUpdating) {
+        if (!isUpdating) {
+            // Small delay to show success state
+            kotlinx.coroutines.delay(300)
+            onDismiss()
+        }
+    }
+    
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Select Currency",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            if (isUpdating) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "Updating currency...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            } else {
+                majorCurrencies.forEach { (code, symbol) ->
+                    val isSelected = code == currentCurrencyCode
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isSelected) {
+                                onCurrencySelected(code)
+                            }
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$code ($symbol)",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    if (code != majorCurrencies.last().first) {
+                        HorizontalDivider()
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

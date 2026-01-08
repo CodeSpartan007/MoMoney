@@ -8,11 +8,16 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.graphics.Color
 import com.kp.momoney.data.local.AppTheme
+import com.kp.momoney.data.local.CurrencyPreference
 import com.kp.momoney.data.local.UserPreferencesRepository
+import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.CsvUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -23,7 +28,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val transactionRepository: TransactionRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val currencyRepository: CurrencyRepository
 ) : ViewModel() {
 
     val userEmail: String
@@ -42,6 +48,17 @@ class SettingsViewModel @Inject constructor(
         userPreferencesRepository.theme.map { theme ->
             theme == AppTheme.DARK
         }
+
+    /**
+     * Current currency preference as a Flow
+     */
+    val currentCurrency: Flow<CurrencyPreference> = currencyRepository.getCurrencyPreference()
+
+    /**
+     * Loading state for currency update operation
+     */
+    private val _isUpdatingCurrency = MutableStateFlow(false)
+    val isUpdatingCurrency: StateFlow<Boolean> = _isUpdatingCurrency.asStateFlow()
 
     /**
      * Set the theme preference
@@ -69,6 +86,29 @@ class SettingsViewModel @Inject constructor(
     fun setSeedColor(color: Color) {
         viewModelScope.launch {
             userPreferencesRepository.setSeedColor(color)
+        }
+    }
+
+    /**
+     * Update currency preference by fetching latest exchange rate
+     */
+    fun updateCurrency(newCode: String) {
+        viewModelScope.launch {
+            _isUpdatingCurrency.value = true
+            try {
+                val result = currencyRepository.setCurrency(newCode)
+                result.fold(
+                    onSuccess = {
+                        // Success - currency updated
+                    },
+                    onFailure = { error ->
+                        // Error handling could be added here (e.g., show snackbar)
+                        error.printStackTrace()
+                    }
+                )
+            } finally {
+                _isUpdatingCurrency.value = false
+            }
         }
     }
 
