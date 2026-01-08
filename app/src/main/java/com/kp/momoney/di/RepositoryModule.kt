@@ -4,10 +4,12 @@ import com.kp.momoney.data.repository.BudgetRepositoryImpl
 import com.kp.momoney.data.repository.CategoryRepositoryImpl
 import com.kp.momoney.data.repository.TransactionRepositoryImpl
 import com.kp.momoney.data.repository.AuthRepositoryImpl
+import com.kp.momoney.data.repository.CurrencyRepositoryImpl
 import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.domain.repository.AuthRepository
+import com.kp.momoney.domain.repository.CurrencyRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -41,5 +43,11 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         impl: AuthRepositoryImpl
     ): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCurrencyRepository(
+        impl: CurrencyRepositoryImpl
+    ): CurrencyRepository
 }
 

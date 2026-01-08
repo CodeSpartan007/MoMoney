@@ -103,6 +103,11 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
     
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.gson)
+    
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
