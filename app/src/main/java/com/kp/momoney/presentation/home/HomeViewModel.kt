@@ -2,9 +2,11 @@ package com.kp.momoney.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kp.momoney.data.local.CurrencyPreference
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
+import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +27,8 @@ data class HomeUiState(
     val transactions: List<Transaction> = emptyList(),
     val totalIncome: Double = 0.0,
     val totalExpense: Double = 0.0,
-    val isLoading: Boolean = true // Added loading state just in case
+    val isLoading: Boolean = true, // Added loading state just in case
+    val currencyPreference: CurrencyPreference = CurrencyPreference("KES", "KSh", 1.0f)
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -33,7 +36,8 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
-    val categoryRepository: CategoryRepository
+    val categoryRepository: CategoryRepository,
+    private val currencyRepository: CurrencyRepository
 ) : ViewModel() {
 
     // Search and Filter State
@@ -128,24 +132,30 @@ class HomeViewModel @Inject constructor(
         }
     }.flatMapLatest { it }
 
-    // TRANSFORMING THE FLOW DIRECTLY
-    val uiState: StateFlow<HomeUiState> = filteredTransactions
-        .map { transactions ->
-            val income = transactions
-                .filter { it.type.equals("Income", ignoreCase = true) }
-                .sumOf { it.amount }
+    // Get currency preference flow
+    private val currencyPreference = currencyRepository.getCurrencyPreference()
 
-            val expense = transactions
-                .filter { it.type.equals("Expense", ignoreCase = true) }
-                .sumOf { it.amount }
+    // TRANSFORMING THE FLOW DIRECTLY - Combine transactions with currency preference
+    val uiState: StateFlow<HomeUiState> = combine(
+        filteredTransactions,
+        currencyPreference
+    ) { transactions, currency ->
+        val income = transactions
+            .filter { it.type.equals("Income", ignoreCase = true) }
+            .sumOf { it.amount }
 
-            HomeUiState(
-                transactions = transactions,
-                totalIncome = income,
-                totalExpense = expense,
-                isLoading = false
-            )
-        }
+        val expense = transactions
+            .filter { it.type.equals("Expense", ignoreCase = true) }
+            .sumOf { it.amount }
+
+        HomeUiState(
+            transactions = transactions,
+            totalIncome = income,
+            totalExpense = expense,
+            isLoading = false,
+            currencyPreference = currency
+        )
+    }
         .catch { exception ->
             exception.printStackTrace()
             // In a real app, you'd emit an error state here

@@ -27,6 +27,7 @@ import com.kp.momoney.util.toCurrency
 fun IncomeExpenseBarChart(
     income: Double,
     expense: Double,
+    currencyPreference: com.kp.momoney.data.local.CurrencyPreference,
     modifier: Modifier = Modifier
 ) {
     val chartHeight = 200.dp
@@ -91,7 +92,7 @@ fun IncomeExpenseBarChart(
 
                         // Step B: Draw Text Labels using nativeCanvas
                         val labelValue = maxVal * percentage
-                        val labelText = labelValue.toCurrency()
+                        val labelText = labelValue.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol)
 
                         // Setup Paint for text
                         val textPaint = Paint().apply {
@@ -140,7 +141,7 @@ fun IncomeExpenseBarChart(
                 // Income value label
                 if (income > 0) {
                     Text(
-                        text = income.toCurrency(),
+                        text = income.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol),
                         style = MaterialTheme.typography.bodySmall,
                         color = textColor,
                         modifier = Modifier
@@ -152,7 +153,7 @@ fun IncomeExpenseBarChart(
                 // Expense value label
                 if (expense > 0) {
                     Text(
-                        text = expense.toCurrency(),
+                        text = expense.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol),
                         style = MaterialTheme.typography.bodySmall,
                         color = textColor,
                         modifier = Modifier

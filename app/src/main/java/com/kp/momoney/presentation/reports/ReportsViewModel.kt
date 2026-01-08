@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kp.momoney.data.local.CurrencyPreference
+import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.CsvUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
@@ -30,12 +33,14 @@ data class CategoryPercentage(
 data class ReportsUiState(
     val items: List<CategoryPercentage> = emptyList(),
     val totalExpense: Double = 0.0,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val currencyPreference: CurrencyPreference = CurrencyPreference("KES", "KSh", 1.0f)
 )
 
 data class IncomeExpenseState(
     val income: Double,
-    val expense: Double
+    val expense: Double,
+    val currencyPreference: CurrencyPreference = CurrencyPreference("KES", "KSh", 1.0f)
 )
 
 data class DailyPoint(
@@ -43,11 +48,20 @@ data class DailyPoint(
     val amount: Double
 )
 
+data class DailyTrendState(
+    val points: List<DailyPoint>,
+    val currencyPreference: CurrencyPreference = CurrencyPreference("KES", "KSh", 1.0f)
+)
+
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportsViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val currencyRepository: CurrencyRepository
 ) : ViewModel() {
+
+    // Get currency preference flow
+    private val currencyPreference = currencyRepository.getCurrencyPreference()
 
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState: StateFlow<ReportsUiState> = _uiState.asStateFlow()
@@ -69,13 +83,18 @@ class ReportsViewModel @Inject constructor(
 
     private fun observeTransactions() {
         viewModelScope.launch {
-            _filterDateRange.flatMapLatest { dateRange ->
-                if (dateRange == null) {
-                    transactionRepository.getAllTransactions()
-                } else {
-                    transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
-                }
-            }.collect { transactions ->
+            combine(
+                _filterDateRange.flatMapLatest { dateRange ->
+                    if (dateRange == null) {
+                        transactionRepository.getAllTransactions()
+                    } else {
+                        transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
+                    }
+                },
+                currencyPreference
+            ) { transactions, currency ->
+                Pair(transactions, currency)
+            }.collect { (transactions, currency) ->
                 val expenseTransactions = transactions.filter {
                     it.type.equals("Expense", ignoreCase = true)
                 }
@@ -115,7 +134,8 @@ class ReportsViewModel @Inject constructor(
                 _uiState.value = ReportsUiState(
                     items = items,
                     totalExpense = totalExpense,
-                    isLoading = false
+                    isLoading = false,
+                    currencyPreference = currency
                 )
             }
         }
@@ -123,13 +143,18 @@ class ReportsViewModel @Inject constructor(
 
     private fun observeIncomeVsExpense() {
         viewModelScope.launch {
-            _filterDateRange.flatMapLatest { dateRange ->
-                if (dateRange == null) {
-                    transactionRepository.getAllTransactions()
-                } else {
-                    transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
-                }
-            }.collect { transactions ->
+            combine(
+                _filterDateRange.flatMapLatest { dateRange ->
+                    if (dateRange == null) {
+                        transactionRepository.getAllTransactions()
+                    } else {
+                        transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
+                    }
+                },
+                currencyPreference
+            ) { transactions, currency ->
+                Pair(transactions, currency)
+            }.collect { (transactions, currency) ->
                 // If date range is filtered, use all transactions in the range
                 // Otherwise, filter to current month (original behavior)
                 val filteredTransactions = if (_filterDateRange.value == null) {
@@ -158,7 +183,8 @@ class ReportsViewModel @Inject constructor(
 
                 _incomeExpenseState.value = IncomeExpenseState(
                     income = totalIncome,
-                    expense = totalExpense
+                    expense = totalExpense,
+                    currencyPreference = currency
                 )
             }
         }
@@ -166,13 +192,18 @@ class ReportsViewModel @Inject constructor(
 
     private fun observeDailyTrend() {
         viewModelScope.launch {
-            _filterDateRange.flatMapLatest { dateRange ->
-                if (dateRange == null) {
-                    transactionRepository.getAllTransactions()
-                } else {
-                    transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
-                }
-            }.collect { transactions ->
+            combine(
+                _filterDateRange.flatMapLatest { dateRange ->
+                    if (dateRange == null) {
+                        transactionRepository.getAllTransactions()
+                    } else {
+                        transactionRepository.getTransactionsByDateRange(dateRange.first, dateRange.second)
+                    }
+                },
+                currencyPreference
+            ) { transactions, currency ->
+                Pair(transactions, currency)
+            }.collect { (transactions, currency) ->
                 val dateRange = _filterDateRange.value
                 
                 // If date range is filtered, use the filtered range

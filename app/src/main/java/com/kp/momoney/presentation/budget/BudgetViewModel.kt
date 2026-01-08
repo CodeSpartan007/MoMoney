@@ -3,8 +3,10 @@ package com.kp.momoney.presentation.budget
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.data.local.entity.BudgetEntity
+import com.kp.momoney.data.local.CurrencyPreference
 import com.kp.momoney.domain.model.BudgetState
 import com.kp.momoney.domain.repository.BudgetRepository
+import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,19 +17,26 @@ import javax.inject.Inject
 @HiltViewModel
 class BudgetViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
-    private val budgetRepository: BudgetRepository
+    private val budgetRepository: BudgetRepository,
+    private val currencyRepository: CurrencyRepository
 ) : ViewModel() {
+
+    // Get currency preference flow
+    private val currencyPreference = currencyRepository.getCurrencyPreference()
 
     // FIX 1: Use stateIn to automatically manage the connection to the repository.
     // This ensures that as soon as the UI subscribes, the DB is queried.
-    val uiState: StateFlow<BudgetUiState> = transactionRepository.getBudgetsWithSpending()
-        .map { budgets ->
-            BudgetUiState(
-                budgets = budgets,
-                isLoading = false,
-                error = null
-            )
-        }
+    val uiState: StateFlow<BudgetUiState> = combine(
+        transactionRepository.getBudgetsWithSpending(),
+        currencyPreference
+    ) { budgets, currency ->
+        BudgetUiState(
+            budgets = budgets,
+            isLoading = false,
+            error = null,
+            currencyPreference = currency
+        )
+    }
         .catch { e ->
             emit(BudgetUiState(isLoading = false, error = e.message ?: "Failed to load budgets"))
         }
@@ -70,5 +79,6 @@ class BudgetViewModel @Inject constructor(
 data class BudgetUiState(
     val budgets: List<BudgetState> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val currencyPreference: CurrencyPreference = CurrencyPreference("KES", "KSh", 1.0f)
 )

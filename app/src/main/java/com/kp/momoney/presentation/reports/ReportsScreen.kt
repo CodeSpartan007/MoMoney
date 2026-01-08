@@ -201,7 +201,10 @@ private fun ReportsOverviewTab(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 uiState.items.forEach { item ->
-                    CategoryLegendRow(item = item)
+                    CategoryLegendRow(
+                        item = item,
+                        currencyPreference = uiState.currencyPreference
+                    )
                 }
             }
 
@@ -218,7 +221,8 @@ private fun ReportsOverviewTab(
 
         IncomeExpenseBarChart(
             income = incomeExpenseState.income,
-            expense = incomeExpenseState.expense
+            expense = incomeExpenseState.expense,
+            currencyPreference = incomeExpenseState.currencyPreference
         )
 
         if (uiState.items.isEmpty() && incomeExpenseState.income == 0.0 && 
@@ -277,7 +281,8 @@ private fun ReportsTrendsTab(
 
 @Composable
 private fun CategoryLegendRow(
-    item: CategoryPercentage
+    item: CategoryPercentage,
+    currencyPreference: com.kp.momoney.data.local.CurrencyPreference
 ) {
     Row(
         modifier = Modifier
@@ -302,7 +307,7 @@ private fun CategoryLegendRow(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = item.totalAmount.toCurrency(),
+                text = item.totalAmount.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

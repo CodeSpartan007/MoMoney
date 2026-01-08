@@ -115,6 +115,7 @@ fun BudgetScreen(
                     items(uiState.budgets) { budget ->
                         BudgetItem(
                             budget = budget,
+                            currencyPreference = uiState.currencyPreference,
                             onEditClick = {
                                 showEditDialog = budget
                                 editAmountText = if (budget.limitAmount > 0.0) {
@@ -178,6 +179,7 @@ fun BudgetScreen(
 @Composable
 fun BudgetItem(
     budget: BudgetState,
+    currencyPreference: com.kp.momoney.data.local.CurrencyPreference,
     onEditClick: () -> Unit
 ) {
     val progress = if (budget.limitAmount > 0) (budget.spentAmount / budget.limitAmount) else 0.0
@@ -231,7 +233,7 @@ fun BudgetItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${budget.spentAmount.toCurrency()} / ${budget.limitAmount.toCurrency()}",
+                            text = "${budget.spentAmount.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol)} / ${budget.limitAmount.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -277,9 +279,9 @@ fun BudgetItem(
                     val remaining = budget.limitAmount - budget.spentAmount
                     Text(
                         text = if (remaining >= 0) {
-                            "${remaining.toCurrency()} remaining"
+                            "${remaining.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol)} remaining"
                         } else {
-                            "${(-remaining).toCurrency()} over budget"
+                            "${(-remaining).toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol)} over budget"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (remaining >= 0) {

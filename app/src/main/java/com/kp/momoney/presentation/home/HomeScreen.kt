@@ -193,7 +193,8 @@ fun HomeScreen(
                     item {
                         TotalBalanceCard(
                             totalIncome = uiState.totalIncome,
-                            totalExpense = uiState.totalExpense
+                            totalExpense = uiState.totalExpense,
+                            currencyPreference = uiState.currencyPreference
                         )
                     }
                     
@@ -227,6 +228,7 @@ fun HomeScreen(
                             TransactionItem(
                                 transaction = transaction,
                                 isSelected = isSelected,
+                                currencyPreference = uiState.currencyPreference,
                                 onLongClick = { viewModel.onTransactionLongClick(transaction.id) },
                                 onClick = {
                                     if (selectedTransactionId != null) {
@@ -334,7 +336,8 @@ fun HomeScreen(
 @Composable
 fun TotalBalanceCard(
     totalIncome: Double,
-    totalExpense: Double
+    totalExpense: Double,
+    currencyPreference: com.kp.momoney.data.local.CurrencyPreference
 ) {
     val balance = totalIncome - totalExpense
     val balanceColor = if (balance >= 0) {
@@ -362,7 +365,7 @@ fun TotalBalanceCard(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = balance.toCurrency(),
+                text = balance.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = balanceColor
@@ -379,7 +382,7 @@ fun TotalBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = totalIncome.toCurrency(),
+                        text = totalIncome.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF4CAF50)
@@ -392,7 +395,7 @@ fun TotalBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = totalExpense.toCurrency(),
+                        text = totalExpense.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFFF44336)
@@ -407,6 +410,7 @@ fun TotalBalanceCard(
 fun TransactionItem(
     transaction: Transaction,
     isSelected: Boolean = false,
+    currencyPreference: com.kp.momoney.data.local.CurrencyPreference,
     onLongClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
@@ -497,7 +501,7 @@ fun TransactionItem(
 
             // Amount
             Text(
-                text = "$amountPrefix${transaction.amount.toCurrency()}",
+                text = "$amountPrefix${transaction.amount.toCurrency(currencyPreference.exchangeRate, currencyPreference.currencySymbol)}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = amountColor
