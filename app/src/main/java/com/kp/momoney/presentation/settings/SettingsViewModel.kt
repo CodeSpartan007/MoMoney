@@ -12,7 +12,9 @@ import com.kp.momoney.data.local.UserPreferencesRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.CsvUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -33,11 +35,31 @@ class SettingsViewModel @Inject constructor(
     val currentTheme = userPreferencesRepository.theme
 
     /**
+     * Computed boolean indicating if dark theme is enabled
+     * Maps AppTheme to boolean (DARK -> true, LIGHT/SYSTEM -> false)
+     */
+    val isDarkTheme: Flow<Boolean> = 
+        userPreferencesRepository.theme.map { theme ->
+            theme == AppTheme.DARK
+        }
+
+    /**
      * Set the theme preference
      */
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch {
             userPreferencesRepository.setTheme(theme)
+        }
+    }
+
+    /**
+     * Toggle dark mode on/off
+     * Maps boolean to AppTheme (true -> DARK, false -> LIGHT)
+     */
+    fun toggleDarkMode(isDark: Boolean) {
+        viewModelScope.launch {
+            val newTheme = if (isDark) AppTheme.DARK else AppTheme.LIGHT
+            userPreferencesRepository.setTheme(newTheme)
         }
     }
 

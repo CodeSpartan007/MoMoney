@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -33,8 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -50,7 +53,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
-import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.ui.theme.AppThemeConfig
 import com.kp.momoney.ui.theme.ThemeSeeds
 import com.kp.momoney.R
@@ -65,7 +67,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val userEmail = viewModel.userEmail
-    val currentTheme by viewModel.currentTheme.collectAsState(initial = AppTheme.LIGHT)
+    val isDarkTheme by viewModel.isDarkTheme.collectAsState(initial = false)
 
     Scaffold(
         topBar = {
@@ -97,36 +99,35 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Profile Section
+            // Profile Section (Top)
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Profile Icon
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profile",
-                    modifier = Modifier.size(120.dp),
+                    modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
 
                 // User Email
                 Text(
                     text = userEmail,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp),
+                        .padding(top = 8.dp),
                     textAlign = TextAlign.Center
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Appearance Section
             Card(
@@ -147,48 +148,20 @@ fun SettingsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                     
-                    // Theme Selection
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    // Dark Mode Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Theme",
+                            text = "Dark Mode",
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // First row: System and Light
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                ThemeOption(
-                                    label = "System",
-                                    theme = AppTheme.SYSTEM,
-                                    selected = currentTheme == AppTheme.SYSTEM,
-                                    onClick = { viewModel.setTheme(AppTheme.SYSTEM) }
-                                )
-                                ThemeOption(
-                                    label = "Light",
-                                    theme = AppTheme.LIGHT,
-                                    selected = currentTheme == AppTheme.LIGHT,
-                                    onClick = { viewModel.setTheme(AppTheme.LIGHT) }
-                                )
-                            }
-                            // Second row: Dark (centered)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                ThemeOption(
-                                    label = "Dark",
-                                    theme = AppTheme.DARK,
-                                    selected = currentTheme == AppTheme.DARK,
-                                    onClick = { viewModel.setTheme(AppTheme.DARK) }
-                                )
-                            }
-                        }
+                        Switch(
+                            checked = isDarkTheme,
+                            onCheckedChange = { viewModel.toggleDarkMode(it) }
+                        )
                     }
                     
                     // Palette Selection
@@ -258,53 +231,48 @@ fun SettingsScreen(
                 }
             }
 
-            // Sign Out Button
-            Button(
-                onClick = {
-                    // Sign out of Firebase first
-                    FirebaseAuth.getInstance().signOut()
-                    
-                    // Show toast to inform user
-                    Toast.makeText(context, "Logging out and resetting...", Toast.LENGTH_SHORT).show()
-                    
-                    // Nuclear option: Clear all app data (this will kill the app)
-                    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                    am.clearApplicationUserData()
-                },
+            // Account Section
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Text("Sign Out")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Account",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    // Sign Out Button
+                    Button(
+                        onClick = {
+                            // Sign out of Firebase first
+                            FirebaseAuth.getInstance().signOut()
+                            
+                            // Show toast to inform user
+                            Toast.makeText(context, "Logging out and resetting...", Toast.LENGTH_SHORT).show()
+                            
+                            // Nuclear option: Clear all app data (this will kill the app)
+                            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                            am.clearApplicationUserData()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Sign Out")
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun ThemeOption(
-    label: String,
-    @Suppress("UNUSED_PARAMETER") theme: AppTheme,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary
-            )
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = 4.dp)
-        )
     }
 }
 
