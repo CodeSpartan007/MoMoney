@@ -21,7 +21,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material3.Icon
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
+import com.kp.momoney.util.showBiometricPrompt
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,6 +87,7 @@ fun AppLockScreen(
     }
 
     val currentPin = if (isConfirming) confirmPin else inputPin
+    val isUnlockMode = !isSetup
     val title = when {
         isSetup && !isConfirming -> "Create PIN"
         isSetup && isConfirming -> "Confirm PIN"
@@ -92,6 +97,21 @@ fun AppLockScreen(
         isSetup && !isConfirming -> "Create a PIN to secure your account"
         isSetup && isConfirming -> "Confirm your PIN"
         else -> "Enter your PIN to access MoMoney"
+    }
+    
+    // Get context and try to cast to FragmentActivity for biometric
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    
+    // Auto-trigger biometric prompt in unlock mode
+    LaunchedEffect(Unit) {
+        if (isUnlockMode && activity != null) {
+            // Small delay to ensure UI is ready
+            kotlinx.coroutines.delay(300)
+            showBiometricPrompt(activity) {
+                onUnlockSuccess()
+            }
+        }
     }
 
     // Layout Container: Surface with 100% opaque background
@@ -176,6 +196,9 @@ fun AppLockScreen(
             Keypad(
                 onNumberClick = viewModel::onNumberClick,
                 onDeleteClick = viewModel::onDeleteClick,
+                onBiometricClick = if (isUnlockMode && activity != null) {
+                    { showBiometricPrompt(activity) { onUnlockSuccess() } }
+                } else null,
                 modifier = Modifier.fillMaxWidth()
             )
             
@@ -211,6 +234,7 @@ private fun PinDot(
 private fun Keypad(
     onNumberClick: (Int) -> Unit,
     onDeleteClick: () -> Unit,
+    onBiometricClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -218,30 +242,89 @@ private fun Keypad(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Rows 1-3 (1-9)
-        for (row in 0 until 3) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                for (col in 0 until 3) {
-                    val number = row * 3 + col + 1
-                    KeypadButton(
-                        text = number.toString(),
-                        onClick = { onNumberClick(number) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        // Bottom row: empty space, 0, Backspace
+        // Row 1: 1, 2, 3
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Empty space
-            Spacer(modifier = Modifier.weight(1f))
+            KeypadButton(
+                text = "1",
+                onClick = { onNumberClick(1) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "2",
+                onClick = { onNumberClick(2) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "3",
+                onClick = { onNumberClick(3) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        // Row 2: 4, 5, 6
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            KeypadButton(
+                text = "4",
+                onClick = { onNumberClick(4) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "5",
+                onClick = { onNumberClick(5) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "6",
+                onClick = { onNumberClick(6) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        // Row 3: 7, 8, 9
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            KeypadButton(
+                text = "7",
+                onClick = { onNumberClick(7) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "8",
+                onClick = { onNumberClick(8) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "9",
+                onClick = { onNumberClick(9) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Row 4: Biometric Icon, 0, Backspace
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Biometric button (only shown if onBiometricClick is provided)
+            if (onBiometricClick != null) {
+                KeypadButton(
+                    text = "",
+                    onClick = onBiometricClick,
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Rounded.Fingerprint
+                )
+            } else {
+                // Empty space if biometric is not available
+                Spacer(modifier = Modifier.weight(1f))
+            }
             
             // 0 button
             KeypadButton(
