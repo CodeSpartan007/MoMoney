@@ -45,6 +45,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -63,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.kp.momoney.data.local.CurrencyPreference
+import com.kp.momoney.presentation.auth.AppLockScreen
 import com.kp.momoney.ui.theme.AppThemeConfig
 import com.kp.momoney.ui.theme.ThemeSeeds
 import com.kp.momoney.R
@@ -83,6 +90,13 @@ fun SettingsScreen(
     )
     val isUpdatingCurrency by viewModel.isUpdatingCurrency.collectAsState()
     var showCurrencySheet by remember { mutableStateOf(false) }
+    
+    // App Lock state
+    val isAppLockEnabled by viewModel.isAppLockEnabled.collectAsState(initial = false)
+    val showPinSetup by viewModel.showPinSetup.collectAsState()
+    val showPinVerification by viewModel.showPinVerification.collectAsState()
+    val pinVerificationError by viewModel.pinVerificationError.collectAsState()
+    var pinInput by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -203,6 +217,51 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                    }
+                }
+            }
+
+            // Security Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Security",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    // App Lock Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "App Lock",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Switch(
+                            checked = isAppLockEnabled,
+                            onCheckedChange = { isEnabled ->
+                                if (isEnabled) {
+                                    // Turning ON: Show PIN setup screen
+                                    viewModel.requestEnableAppLock()
+                                } else {
+                                    // Turning OFF: Show PIN verification dialog
+                                    viewModel.requestDisableAppLock()
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -328,6 +387,93 @@ fun SettingsScreen(
                 isUpdating = isUpdatingCurrency,
                 onCurrencySelected = { code ->
                     viewModel.updateCurrency(code)
+                }
+            )
+        }
+        
+        // PIN Setup Full-Screen Dialog
+        if (showPinSetup) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                AppLockScreen(
+                    onUnlockSuccess = {
+                        viewModel.onPinSetupSuccess()
+                    },
+                    isSetupMode = true
+                )
+            }
+        }
+        
+        // Clear PIN input when verification dialog is dismissed
+        LaunchedEffect(showPinVerification) {
+            if (!showPinVerification) {
+                pinInput = ""
+            }
+        }
+        
+        // Clear PIN input when verification succeeds (error becomes null)
+        LaunchedEffect(pinVerificationError) {
+            if (pinVerificationError == null && !showPinVerification) {
+                pinInput = ""
+            }
+        }
+        
+        // PIN Verification Dialog
+        if (showPinVerification) {
+            AlertDialog(
+                onDismissRequest = { 
+                    viewModel.cancelPinVerification()
+                    pinInput = ""
+                },
+                title = { Text("Disable App Lock") },
+                text = {
+                    Column {
+                        Text("Enter your current PIN to disable App Lock")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = pinInput,
+                            onValueChange = { 
+                                if (it.length <= 6) {
+                                    pinInput = it
+                                    // Auto-verify when PIN is complete
+                                    if (it.length == 6) {
+                                        viewModel.verifyAndDisableAppLock(it)
+                                    }
+                                }
+                            },
+                            label = { Text("PIN") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            isError = pinVerificationError != null,
+                            supportingText = if (pinVerificationError != null) {
+                                { Text(pinVerificationError!!, color = MaterialTheme.colorScheme.error) }
+                            } else null
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (pinInput.length == 6) {
+                                viewModel.verifyAndDisableAppLock(pinInput)
+                            }
+                        },
+                        enabled = pinInput.length == 6
+                    ) {
+                        Text("Disable")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        viewModel.cancelPinVerification()
+                        pinInput = ""
+                    }) {
+                        Text("Cancel")
+                    }
                 }
             )
         }

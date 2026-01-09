@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.data.local.CurrencyPreference
 import com.kp.momoney.data.local.UserPreferencesRepository
+import com.kp.momoney.data.repository.AppLockRepository
 import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.CsvUtils
@@ -29,7 +30,8 @@ class SettingsViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val transactionRepository: TransactionRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val currencyRepository: CurrencyRepository
+    private val currencyRepository: CurrencyRepository,
+    private val appLockRepository: AppLockRepository
 ) : ViewModel() {
 
     val userEmail: String
@@ -59,6 +61,29 @@ class SettingsViewModel @Inject constructor(
      */
     private val _isUpdatingCurrency = MutableStateFlow(false)
     val isUpdatingCurrency: StateFlow<Boolean> = _isUpdatingCurrency.asStateFlow()
+
+    /**
+     * App lock enabled state as a Flow
+     */
+    val isAppLockEnabled: Flow<Boolean> = appLockRepository.isAppLockEnabled()
+
+    /**
+     * State for showing PIN setup screen
+     */
+    private val _showPinSetup = MutableStateFlow(false)
+    val showPinSetup: StateFlow<Boolean> = _showPinSetup.asStateFlow()
+
+    /**
+     * State for showing PIN verification dialog
+     */
+    private val _showPinVerification = MutableStateFlow(false)
+    val showPinVerification: StateFlow<Boolean> = _showPinVerification.asStateFlow()
+
+    /**
+     * Error message for PIN verification
+     */
+    private val _pinVerificationError = MutableStateFlow<String?>(null)
+    val pinVerificationError: StateFlow<String?> = _pinVerificationError.asStateFlow()
 
     /**
      * Set the theme preference
@@ -146,6 +171,59 @@ class SettingsViewModel @Inject constructor(
                 e.printStackTrace()
             }
         }
+    }
+
+    /**
+     * Request to enable app lock - shows PIN setup screen
+     */
+    fun requestEnableAppLock() {
+        _showPinSetup.value = true
+    }
+
+    /**
+     * Called when PIN setup is successful
+     */
+    fun onPinSetupSuccess() {
+        _showPinSetup.value = false
+    }
+
+    /**
+     * Called when PIN setup is cancelled
+     */
+    fun onPinSetupCancelled() {
+        _showPinSetup.value = false
+    }
+
+    /**
+     * Request to disable app lock - shows PIN verification dialog
+     */
+    fun requestDisableAppLock() {
+        _pinVerificationError.value = null
+        _showPinVerification.value = true
+    }
+
+    /**
+     * Verify PIN and disable app lock if correct
+     */
+    fun verifyAndDisableAppLock(pin: String) {
+        viewModelScope.launch {
+            val isValid = appLockRepository.verifyPin(pin)
+            if (isValid) {
+                appLockRepository.disableAppLock()
+                _showPinVerification.value = false
+                _pinVerificationError.value = null
+            } else {
+                _pinVerificationError.value = "Incorrect PIN"
+            }
+        }
+    }
+
+    /**
+     * Cancel PIN verification
+     */
+    fun cancelPinVerification() {
+        _showPinVerification.value = false
+        _pinVerificationError.value = null
     }
 }
 
