@@ -2,7 +2,11 @@ package com.kp.momoney.presentation.auth
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +19,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,11 +33,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.kp.momoney.R
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,71 +86,101 @@ fun AppLockScreen(
     val title = when {
         isSetup && !isConfirming -> "Create PIN"
         isSetup && isConfirming -> "Confirm PIN"
-        else -> "Enter PIN"
+        else -> "Welcome Back"
+    }
+    val subtitle = when {
+        isSetup && !isConfirming -> "Create a PIN to secure your account"
+        isSetup && isConfirming -> "Confirm your PIN"
+        else -> "Enter your PIN to access MoMoney"
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    // Layout Container: Surface with 100% opaque background
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Title
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 48.dp)
-        )
-
-        // Dots Indicator
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp)
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(x = offsetX.value.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+            // Header Section (Top)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                repeat(6) { index ->
-                    PinDot(
-                        isFilled = index < currentPin.length,
-                        modifier = Modifier.size(16.dp)
+                Spacer(modifier = Modifier.height(64.dp))
+                
+                // App Logo
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.size(80.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Title: "Welcome Back" (H5 style)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Subtitle: "Enter your PIN to access MoMoney" (Body style, gray color)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(48.dp))
+                
+                // PIN Dots (Middle)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset(x = offsetX.value.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(6) { index ->
+                        PinDot(
+                            isFilled = index < currentPin.length,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Error message
+                if (uiState is AppLockUiState.Error) {
+                    Text(
+                        text = (uiState as AppLockUiState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Error message
-        if (uiState is AppLockUiState.Error) {
-            Text(
-                text = (uiState as AppLockUiState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(vertical = 8.dp)
+            // The Numpad (Bottom)
+            Keypad(
+                onNumberClick = viewModel::onNumberClick,
+                onDeleteClick = viewModel::onDeleteClick,
+                modifier = Modifier.fillMaxWidth()
             )
+            
+            Spacer(modifier = Modifier.height(32.dp))
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Keypad
-        Keypad(
-            onNumberClick = viewModel::onNumberClick,
-            onDeleteClick = viewModel::onDeleteClick,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -157,9 +192,17 @@ private fun PinDot(
     Box(
         modifier = modifier
             .clip(CircleShape)
-            .background(
-                if (isFilled) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            .then(
+                if (isFilled) {
+                    Modifier.background(MaterialTheme.colorScheme.primary)
+                } else {
+                    Modifier
+                        .border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            shape = CircleShape
+                        )
+                }
             )
     )
 }
@@ -173,13 +216,13 @@ private fun Keypad(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Rows 1-3 (1-9)
         for (row in 0 until 3) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 for (col in 0 until 3) {
                     val number = row * 3 + col + 1
@@ -192,16 +235,22 @@ private fun Keypad(
             }
         }
 
-        // Bottom row (0 and Delete)
+        // Bottom row: empty space, 0, Backspace
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Empty space
+            Spacer(modifier = Modifier.weight(1f))
+            
+            // 0 button
             KeypadButton(
                 text = "0",
                 onClick = { onNumberClick(0) },
                 modifier = Modifier.weight(1f)
             )
+            
+            // Backspace button
             KeypadButton(
                 text = "",
                 onClick = onDeleteClick,
@@ -219,25 +268,34 @@ private fun KeypadButton(
     modifier: Modifier = Modifier,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
-    TextButton(
-        onClick = onClick,
+    Box(
         modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp)
+            .size(72.dp)
+            .clip(CircleShape)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = CircleShape
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
     ) {
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = "Delete",
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(24.dp)
             )
         } else {
             Text(
                 text = text,
                 style = MaterialTheme.typography.headlineMedium,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
