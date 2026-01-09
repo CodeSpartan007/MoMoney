@@ -8,6 +8,7 @@ import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
+import com.kp.momoney.util.toBaseCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -80,6 +81,9 @@ class HomeViewModel @Inject constructor(
     // Get all transactions flow
     private val allTransactions = transactionRepository.getAllTransactions()
 
+    // Get currency preference flow
+    private val currencyPreference = currencyRepository.getCurrencyPreference()
+
     // Filtered transactions flow that applies all filters
     // Using nested combine since combine supports max 5 flows directly
     private val filteredTransactions = combine(
@@ -89,7 +93,7 @@ class HomeViewModel @Inject constructor(
         filterCategories,
         filterType
     ) { transactions, query, dateRange, categories, type ->
-        combine(filterMinAmount, filterMaxAmount) { minAmount, maxAmount ->
+        combine(filterMinAmount, filterMaxAmount, currencyPreference) { minAmount, maxAmount, currency ->
             transactions.filter { transaction ->
                 // Search filter
                 val matchesSearch = query.isEmpty() || 
@@ -110,10 +114,17 @@ class HomeViewModel @Inject constructor(
                 val matchesType = type == null || 
                     transaction.type.equals(type, ignoreCase = true)
 
-                // Amount range filter
+                // Amount range filter - convert user input from selected currency to base currency (KES)
                 val matchesMinAmount = minAmount == null || minAmount.isBlank() || run {
                     try {
-                        transaction.amount >= minAmount.toDouble()
+                        val userInputAmount = minAmount.toDouble()
+                        // Convert from selected currency to base currency (KES)
+                        val minAmountInKES = if (currency.currencyCode != "KES" && currency.exchangeRate > 0) {
+                            userInputAmount.toBaseCurrency(currency.exchangeRate)
+                        } else {
+                            userInputAmount
+                        }
+                        transaction.amount >= minAmountInKES
                     } catch (e: NumberFormatException) {
                         true // If invalid, don't filter out
                     }
@@ -121,7 +132,14 @@ class HomeViewModel @Inject constructor(
 
                 val matchesMaxAmount = maxAmount == null || maxAmount.isBlank() || run {
                     try {
-                        transaction.amount <= maxAmount.toDouble()
+                        val userInputAmount = maxAmount.toDouble()
+                        // Convert from selected currency to base currency (KES)
+                        val maxAmountInKES = if (currency.currencyCode != "KES" && currency.exchangeRate > 0) {
+                            userInputAmount.toBaseCurrency(currency.exchangeRate)
+                        } else {
+                            userInputAmount
+                        }
+                        transaction.amount <= maxAmountInKES
                     } catch (e: NumberFormatException) {
                         true // If invalid, don't filter out
                     }
@@ -131,9 +149,6 @@ class HomeViewModel @Inject constructor(
             }
         }
     }.flatMapLatest { it }
-
-    // Get currency preference flow
-    private val currencyPreference = currencyRepository.getCurrencyPreference()
 
     // TRANSFORMING THE FLOW DIRECTLY - Combine transactions with currency preference
     val uiState: StateFlow<HomeUiState> = combine(

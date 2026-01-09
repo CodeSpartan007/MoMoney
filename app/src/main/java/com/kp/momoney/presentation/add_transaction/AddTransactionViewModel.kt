@@ -8,8 +8,10 @@ import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
+import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.DateUtils
+import com.kp.momoney.util.toBaseCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +34,7 @@ class AddTransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
+    private val currencyRepository: CurrencyRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -50,13 +53,31 @@ class AddTransactionViewModel @Inject constructor(
     private val _event = MutableStateFlow<AddTransactionEvent?>(null)
     val event: StateFlow<AddTransactionEvent?> = _event.asStateFlow()
     
+    private val _currencySymbol = MutableStateFlow("KSh")
+    val currencySymbol: StateFlow<String> = _currencySymbol.asStateFlow()
+    
     private val transactionId: Long? = savedStateHandle.get<Long>("transactionId")?.takeIf { it > 0 }
     val isEditMode: Boolean = transactionId != null
     
     init {
         loadCategories()
+        observeCurrencyPreference()
         if (transactionId != null) {
             loadTransaction(transactionId)
+        }
+    }
+    
+    private fun observeCurrencyPreference() {
+        viewModelScope.launch {
+            currencyRepository.getCurrencyPreference()
+                .catch { exception ->
+                    exception.printStackTrace()
+                    // Default to KES if error
+                    _currencySymbol.value = "KSh"
+                }
+                .collect { currencyPreference ->
+                    _currencySymbol.value = currencyPreference.currencySymbol
+                }
         }
     }
     
@@ -65,7 +86,20 @@ class AddTransactionViewModel @Inject constructor(
             try {
                 val transaction = transactionRepository.getTransactionById(id)
                 if (transaction != null) {
-                    amount.value = transaction.amount.toString()
+                    // Get current currency preference
+                    val currencyPreference = currencyRepository.getCurrencyPreference()
+                        .catch { emit(com.kp.momoney.data.local.CurrencyPreference("KES", "KSh", 1.0f)) }
+                        .first()
+                    
+                    // Convert from KES (base) to selected currency for display
+                    // transaction.amount is in KES, we need to show it in selected currency
+                    val convertedAmount = if (currencyPreference.currencyCode != "KES" && currencyPreference.exchangeRate > 0) {
+                        transaction.amount * currencyPreference.exchangeRate
+                    } else {
+                        transaction.amount
+                    }
+                    
+                    amount.value = convertedAmount.toString()
                     note.value = transaction.note
                     transactionDate.value = transaction.date.time
                     recurrence.value = transaction.recurrence
@@ -123,22 +157,48 @@ class AddTransactionViewModel @Inject constructor(
             return
         }
         
-        // Determine transaction type from category
-        val transactionType = category.type
-        
-        val transaction = Transaction(
-            id = transactionId ?: 0, // Use existing ID if editing, 0 for new
-            amount = amountDouble,
-            date = Date(transactionDate.value),
-            note = noteValue,
-            type = transactionType,
-            categoryId = category.id,
-            categoryName = category.name,
-            categoryColor = category.color,
-            categoryIcon = category.icon,
-            recurrence = recurrence.value
-        )
-        
+        // Convert from selected currency to base currency (KES) before saving
+        viewModelScope.launch {
+            try {
+                val currencyPreference = currencyRepository.getCurrencyPreference()
+                    .catch { emit(com.kp.momoney.data.local.CurrencyPreference("KES", "KSh", 1.0f)) }
+                    .first()
+                
+                // Convert user input (in selected currency) to base currency (KES)
+                val finalAmount = if (currencyPreference.currencyCode != "KES" && currencyPreference.exchangeRate > 0) {
+                    amountDouble.toBaseCurrency(currencyPreference.exchangeRate)
+                } else {
+                    amountDouble
+                }
+                
+                // Determine transaction type from category
+                val transactionType = category.type
+                
+                val transaction = Transaction(
+                    id = transactionId ?: 0, // Use existing ID if editing, 0 for new
+                    amount = finalAmount,
+                    date = Date(transactionDate.value),
+                    note = noteValue,
+                    type = transactionType,
+                    categoryId = category.id,
+                    categoryName = category.name,
+                    categoryColor = category.color,
+                    categoryIcon = category.icon,
+                    recurrence = recurrence.value
+                )
+                
+                saveTransactionInternal(transaction, transactionType, category.id)
+            } catch (e: Exception) {
+                _event.value = AddTransactionEvent.Error("Failed to convert currency: ${e.message}")
+            }
+        }
+    }
+    
+    private fun saveTransactionInternal(
+        transaction: Transaction,
+        transactionType: String,
+        categoryId: Int
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -156,14 +216,14 @@ class AddTransactionViewModel @Inject constructor(
                 var budgetAlertMessage: String? = null
                 if (transactionType.equals("Expense", ignoreCase = true)) {
                     try {
-                        val budget = budgetRepository.getBudgetForCategory(category.id)
+                        val budget = budgetRepository.getBudgetForCategory(categoryId)
                         if (budget != null && budget.limitAmount > 0) {
                             val startDate = DateUtils.getCurrentMonthStart()
                             val endDate = DateUtils.getCurrentMonthEnd()
                             
                             // Get current spending for this category (includes the transaction we just saved)
                             val totalSpending = transactionRepository.getCategorySpendingForCategory(
-                                category.id,
+                                categoryId,
                                 startDate,
                                 endDate
                             )
@@ -171,10 +231,10 @@ class AddTransactionViewModel @Inject constructor(
                             // Determine alert message based on thresholds
                             when {
                                 totalSpending > budget.limitAmount -> {
-                                    budgetAlertMessage = "Alert: You have exceeded your ${category.name} budget!"
+                                    budgetAlertMessage = "Alert: You have exceeded your ${transaction.categoryName} budget!"
                                 }
                                 totalSpending > (budget.limitAmount * 0.9) -> {
-                                    budgetAlertMessage = "Warning: You are nearing your ${category.name} budget limit."
+                                    budgetAlertMessage = "Warning: You are nearing your ${transaction.categoryName} budget limit."
                                 }
                             }
                         }

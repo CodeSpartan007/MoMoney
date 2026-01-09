@@ -71,6 +71,7 @@ fun AddTransactionScreen(
     val event by viewModel.event.collectAsState()
     val transactionDate by viewModel.transactionDate.collectAsState()
     val recurrence by viewModel.recurrence.collectAsState()
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     val isEditMode = viewModel.isEditMode
 
     var isCategoryExpanded by remember { mutableStateOf(false) }
@@ -146,6 +147,14 @@ fun AddTransactionScreen(
                         value = amount,
                         onValueChange = { viewModel.amount.value = it },
                         label = { Text("Amount") },
+                        leadingIcon = {
+                            Text(
+                                text = currencySymbol,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp)
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
