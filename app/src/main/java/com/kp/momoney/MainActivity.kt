@@ -4,6 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
@@ -32,10 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dagger.hilt.android.AndroidEntryPoint
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.kp.momoney.data.local.AppTheme
+import com.kp.momoney.data.repository.AppLockRepository
 import com.kp.momoney.presentation.MainViewModel
 import com.kp.momoney.presentation.common.OfflineBanner
 import com.kp.momoney.presentation.navigation.AppNavHost
@@ -45,12 +53,23 @@ import com.kp.momoney.ui.theme.SunYellow
 import com.kp.momoney.ui.theme.MoMoneyTheme
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
+    
+    @Inject
+    lateinit var appLockRepository: AppLockRepository
+    
+    private lateinit var mainViewModel: MainViewModel
+    
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super<ComponentActivity>.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // Register lifecycle observer
+        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+        
         setContent {
             val viewModel: MainViewModel = hiltViewModel()
+            mainViewModel = viewModel // Store reference for lifecycle observer
             val appTheme by viewModel.theme.collectAsState(initial = AppTheme.LIGHT)
             val seedColor by viewModel.seedColor.collectAsState(initial = SunYellow)
             
@@ -72,6 +91,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(
+                        viewModel = viewModel,
+                        appLockRepository = appLockRepository,
                         themeConfig = themeConfig,
                         onThemeChanged = { newConfig ->
                             // This will be handled by SettingsViewModel
@@ -82,10 +103,23 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    
+    override fun onStop(owner: LifecycleOwner) {
+        super<DefaultLifecycleObserver>.onStop(owner)
+        // Lock the app when it goes to background if app lock is enabled
+        lifecycleScope.launch {
+            val isAppLockEnabled = appLockRepository.isAppLockEnabled().first()
+            if (isAppLockEnabled) {
+                mainViewModel.lockApp()
+            }
+        }
+    }
 }
 
 @Composable
 private fun MainScreen(
+    viewModel: MainViewModel,
+    appLockRepository: AppLockRepository,
     themeConfig: AppThemeConfig,
     onThemeChanged: (AppThemeConfig) -> Unit
 ) {
@@ -95,9 +129,12 @@ private fun MainScreen(
     val startDestination = Screen.Splash.route
     val isAuthRoute = currentRoute == Screen.Login.route || currentRoute == Screen.Register.route || currentRoute == Screen.Splash.route
     
-    // Get ViewModel for connectivity status
-    val viewModel: MainViewModel = hiltViewModel()
+    // Get connectivity status
     val isOffline by viewModel.isOffline.collectAsState()
+    
+    // Get app lock state
+    val isAppLocked by viewModel.isAppLocked.collectAsState()
+    val isAppLockEnabled by appLockRepository.isAppLockEnabled().collectAsState(initial = false)
     
     // Determine bottom bar visibility based on current route
     val showBottomBar = currentRoute in listOf(
@@ -176,6 +213,13 @@ private fun MainScreen(
                 isOffline = isOffline,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
+            
+            // App Lock Overlay - covers everything when locked
+            if (isAppLocked && isAppLockEnabled) {
+                com.kp.momoney.presentation.auth.AppLockScreen(
+                    onUnlockSuccess = { viewModel.unlockApp() }
+                )
+            }
         }
     }
 }
