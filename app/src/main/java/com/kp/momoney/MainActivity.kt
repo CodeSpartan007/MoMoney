@@ -72,6 +72,8 @@ class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
             mainViewModel = viewModel // Store reference for lifecycle observer
             val appTheme by viewModel.theme.collectAsState(initial = AppTheme.LIGHT)
             val seedColor by viewModel.seedColor.collectAsState(initial = SunYellow)
+            val isAppLocked by viewModel.isAppLocked.collectAsState()
+            val isAppLockEnabled by appLockRepository.isAppLockEnabled().collectAsState(initial = false)
             
             // Determine isDarkTheme based on AppTheme
             val isDarkTheme = when (appTheme) {
@@ -90,15 +92,25 @@ class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(
-                        viewModel = viewModel,
-                        appLockRepository = appLockRepository,
-                        themeConfig = themeConfig,
-                        onThemeChanged = { newConfig ->
-                            // This will be handled by SettingsViewModel
-                            // The seedColor is already persisted via DataStore
-                        }
-                    )
+                    // Strict Gatekeeper: Conditionally render based on lock state
+                    // When locked, ONLY show AppLockScreen - AppNavHost is NOT composed
+                    if (isAppLocked && isAppLockEnabled) {
+                        // ONLY show the lock screen. The Navigation Host is NOT composed.
+                        com.kp.momoney.presentation.auth.AppLockScreen(
+                            onUnlockSuccess = { viewModel.unlockApp() }
+                        )
+                    } else {
+                        // Show the App normally
+                        MainScreen(
+                            viewModel = viewModel,
+                            appLockRepository = appLockRepository,
+                            themeConfig = themeConfig,
+                            onThemeChanged = { newConfig ->
+                                // This will be handled by SettingsViewModel
+                                // The seedColor is already persisted via DataStore
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -131,10 +143,6 @@ private fun MainScreen(
     
     // Get connectivity status
     val isOffline by viewModel.isOffline.collectAsState()
-    
-    // Get app lock state
-    val isAppLocked by viewModel.isAppLocked.collectAsState()
-    val isAppLockEnabled by appLockRepository.isAppLockEnabled().collectAsState(initial = false)
     
     // Determine bottom bar visibility based on current route
     val showBottomBar = currentRoute in listOf(
@@ -213,13 +221,6 @@ private fun MainScreen(
                 isOffline = isOffline,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
-            
-            // App Lock Overlay - covers everything when locked
-            if (isAppLocked && isAppLockEnabled) {
-                com.kp.momoney.presentation.auth.AppLockScreen(
-                    onUnlockSuccess = { viewModel.unlockApp() }
-                )
-            }
         }
     }
 }
