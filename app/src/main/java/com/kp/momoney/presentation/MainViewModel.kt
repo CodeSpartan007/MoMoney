@@ -26,16 +26,18 @@ class MainViewModel @Inject constructor(
     appLockRepository: AppLockRepository
 ) : ViewModel() {
 
-    // Initialize to true for security: assume locked until proven otherwise
-    // This ensures the lock screen appears immediately on cold start if app lock is enabled
-    private val _isAppLocked = MutableStateFlow<Boolean>(true)
+    // Initialize as false, but will be set to true in init block if app lock is enabled
+    private val _isAppLocked = MutableStateFlow<Boolean>(false)
 
     init {
         // Cold Start Logic: Read appLockRepository.isAppLockEnabled() immediately
-        // If true, isAppLocked remains true (locked). If false, set to false (unlocked).
+        // If true, set isAppLocked to true (locked). If false, it remains false (unlocked).
+        // This ensures a cold start also locks the app if app lock is enabled.
         viewModelScope.launch {
             val isLockEnabled = appLockRepository.isAppLockEnabled().first()
-            _isAppLocked.value = isLockEnabled
+            if (isLockEnabled) {
+                _isAppLocked.value = true
+            }
         }
     }
 

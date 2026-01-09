@@ -107,6 +107,9 @@ dependencies {
     // Security Crypto
     implementation("androidx.security:security-crypto:1.0.0")
     
+    // Biometric
+    implementation(libs.androidx.biometric)
+    
     // Retrofit
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)

@@ -4,13 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,11 +26,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -53,7 +48,7 @@ import com.kp.momoney.ui.theme.SunYellow
 import com.kp.momoney.ui.theme.MoMoneyTheme
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
+class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var appLockRepository: AppLockRepository
@@ -64,12 +59,25 @@ class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
         super<ComponentActivity>.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // Register lifecycle observer
-        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
-        
+        // Register lifecycle observer using ProcessLifecycleOwner
+        // This ensures onStop only triggers when the UI is completely hidden (backgrounded),
+        // not when rotating screens or other activity lifecycle events occur.
         setContent {
             val viewModel: MainViewModel = hiltViewModel()
             mainViewModel = viewModel // Store reference for lifecycle observer
+            
+            // Register the AppLifecycleObserver with ProcessLifecycleOwner
+            // This ensures onStop only triggers when the UI is completely hidden (backgrounded),
+            // not when rotating screens or other activity lifecycle events occur.
+            // Use DisposableEffect to register once and clean up properly
+            val observer = remember { AppLifecycleObserver(viewModel) }
+            DisposableEffect(Unit) {
+                ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
+                onDispose {
+                    ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
+                }
+            }
+        
             val appTheme by viewModel.theme.collectAsState(initial = AppTheme.LIGHT)
             val seedColor by viewModel.seedColor.collectAsState(initial = SunYellow)
             val isAppLocked by viewModel.isAppLocked.collectAsState()
@@ -112,17 +120,6 @@ class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
                         )
                     }
                 }
-            }
-        }
-    }
-    
-    override fun onStop(owner: LifecycleOwner) {
-        super<DefaultLifecycleObserver>.onStop(owner)
-        // Lock the app when it goes to background if app lock is enabled
-        lifecycleScope.launch {
-            val isAppLockEnabled = appLockRepository.isAppLockEnabled().first()
-            if (isAppLockEnabled) {
-                mainViewModel.lockApp()
             }
         }
     }
