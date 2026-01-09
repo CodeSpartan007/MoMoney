@@ -1,0 +1,247 @@
+package com.kp.momoney.presentation.auth
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+
+@Composable
+fun AppLockScreen(
+    onUnlockSuccess: () -> Unit,
+    isSetupMode: Boolean = false,
+    viewModel: AppLockViewModel = hiltViewModel()
+) {
+    val inputPin by viewModel.inputPin.collectAsState()
+    val confirmPin by viewModel.confirmPin.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val isConfirming by viewModel.isConfirming.collectAsState()
+    val shouldShake by viewModel.shouldShake.collectAsState()
+    val isSetup by viewModel.isSetupMode.collectAsState()
+
+    // Initialize setup mode
+    LaunchedEffect(isSetupMode) {
+        viewModel.setSetupMode(isSetupMode)
+    }
+
+    // Handle success state
+    LaunchedEffect(uiState) {
+        if (uiState is AppLockUiState.Success) {
+            onUnlockSuccess()
+        }
+    }
+
+    // Shake animation
+    val offsetX = remember { Animatable(0f) }
+    LaunchedEffect(shouldShake) {
+        if (shouldShake) {
+            repeat(4) {
+                launch {
+                    offsetX.animateTo(10f, animationSpec = tween(50))
+                    offsetX.animateTo(-10f, animationSpec = tween(50))
+                }
+            }
+            offsetX.animateTo(0f, animationSpec = tween(50))
+            viewModel.resetShake()
+        }
+    }
+
+    val currentPin = if (isConfirming) confirmPin else inputPin
+    val title = when {
+        isSetup && !isConfirming -> "Create PIN"
+        isSetup && isConfirming -> "Confirm PIN"
+        else -> "Enter PIN"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Title
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 48.dp)
+        )
+
+        // Dots Indicator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(x = offsetX.value.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(6) { index ->
+                    PinDot(
+                        isFilled = index < currentPin.length,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Error message
+        if (uiState is AppLockUiState.Error) {
+            Text(
+                text = (uiState as AppLockUiState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Keypad
+        Keypad(
+            onNumberClick = viewModel::onNumberClick,
+            onDeleteClick = viewModel::onDeleteClick,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun PinDot(
+    isFilled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(
+                if (isFilled) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            )
+    )
+}
+
+@Composable
+private fun Keypad(
+    onNumberClick: (Int) -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Rows 1-3 (1-9)
+        for (row in 0 until 3) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                for (col in 0 until 3) {
+                    val number = row * 3 + col + 1
+                    KeypadButton(
+                        text = number.toString(),
+                        onClick = { onNumberClick(number) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // Bottom row (0 and Delete)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            KeypadButton(
+                text = "0",
+                onClick = { onNumberClick(0) },
+                modifier = Modifier.weight(1f)
+            )
+            KeypadButton(
+                text = "",
+                onClick = onDeleteClick,
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Backspace
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeypadButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = "Delete",
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        } else {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.headlineMedium,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+
