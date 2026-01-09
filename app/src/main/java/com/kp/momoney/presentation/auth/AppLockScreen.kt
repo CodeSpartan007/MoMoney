@@ -19,11 +19,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.biometric.BiometricManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.rounded.Fingerprint
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Icon
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.kp.momoney.util.showBiometricPrompt
 import androidx.compose.material3.MaterialTheme
@@ -99,13 +101,28 @@ fun AppLockScreen(
         else -> "Enter your PIN to access MoMoney"
     }
     
-    // Get context and try to cast to FragmentActivity for biometric
+    // Get context and check biometric availability
     val context = LocalContext.current
-    val activity = context as? FragmentActivity
+    
+    // Check if biometric is available (doesn't require FragmentActivity)
+    val biometricAvailable = remember {
+        val biometricManager = BiometricManager.from(context)
+        val canAuthenticate = biometricManager.canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or 
+            BiometricManager.Authenticators.BIOMETRIC_WEAK
+        )
+        canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS
+    }
+    
+    // Try to get FragmentActivity (will be null if MainActivity is ComponentActivity)
+    // We'll show the button if biometric is available, and handle FragmentActivity requirement in the click handler
+    val activity = remember { 
+        context as? FragmentActivity
+    }
     
     // Auto-trigger biometric prompt in unlock mode
     LaunchedEffect(Unit) {
-        if (isUnlockMode && activity != null) {
+        if (isUnlockMode && biometricAvailable && activity != null) {
             // Small delay to ensure UI is ready
             kotlinx.coroutines.delay(300)
             showBiometricPrompt(activity) {
@@ -196,8 +213,15 @@ fun AppLockScreen(
             Keypad(
                 onNumberClick = viewModel::onNumberClick,
                 onDeleteClick = viewModel::onDeleteClick,
-                onBiometricClick = if (isUnlockMode && activity != null) {
-                    { showBiometricPrompt(activity) { onUnlockSuccess() } }
+                // Show biometric button if biometric is available and in unlock mode
+                // The click handler will check for FragmentActivity
+                onBiometricClick = if (isUnlockMode && biometricAvailable) {
+                    { 
+                        val fragmentActivity = context as? FragmentActivity
+                        if (fragmentActivity != null) {
+                            showBiometricPrompt(fragmentActivity) { onUnlockSuccess() }
+                        }
+                    }
                 } else null,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -319,7 +343,7 @@ private fun Keypad(
                     text = "",
                     onClick = onBiometricClick,
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.Fingerprint
+                    icon = Icons.Filled.Fingerprint
                 )
             } else {
                 // Empty space if biometric is not available
