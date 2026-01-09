@@ -5,20 +5,36 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.data.local.UserPreferencesRepository
+import com.kp.momoney.data.repository.AppLockRepository
 import com.kp.momoney.data.util.ConnectivityObserver
 import com.kp.momoney.ui.theme.SunYellow
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     userPreferencesRepository: UserPreferencesRepository,
-    connectivityObserver: ConnectivityObserver
+    connectivityObserver: ConnectivityObserver,
+    appLockRepository: AppLockRepository
 ) : ViewModel() {
+
+    private val _isAppLocked = MutableStateFlow<Boolean>(false)
+
+    init {
+        // Initialize isAppLocked based on whether app lock is enabled
+        viewModelScope.launch {
+            val isLockEnabled = appLockRepository.isAppLockEnabled().first()
+            _isAppLocked.value = isLockEnabled
+        }
+    }
 
     /**
      * Theme state flow with initial value of LIGHT
@@ -66,5 +82,25 @@ class MainViewModel @Inject constructor(
             started = SharingStarted.Lazily,
             initialValue = false
         )
+
+    /**
+     * State indicating if the app is currently locked
+     * Defaults to true if app lock is enabled
+     */
+    val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
+
+    /**
+     * Unlock the app by setting isAppLocked to false
+     */
+    fun unlockApp() {
+        _isAppLocked.value = false
+    }
+
+    /**
+     * Lock the app by setting isAppLocked to true
+     */
+    fun lockApp() {
+        _isAppLocked.value = true
+    }
 }
 

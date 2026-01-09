@@ -103,6 +103,9 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
     
+    // Security Crypto
+    implementation("androidx.security:security-crypto:1.0.0")
+    
     // Retrofit
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
