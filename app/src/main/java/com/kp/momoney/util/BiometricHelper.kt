@@ -1,5 +1,6 @@
 package com.kp.momoney.util
 
+import android.app.Activity
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -7,17 +8,21 @@ import androidx.fragment.app.FragmentActivity
 /**
  * Helper function to show biometric authentication prompt.
  * 
- * @param activity The FragmentActivity context (must be FragmentActivity or AppCompatActivity)
+ * @param activity The Activity context (must be FragmentActivity or AppCompatActivity)
  * @param onAuthSuccess Callback invoked when authentication succeeds
  */
 fun showBiometricPrompt(
-    activity: FragmentActivity,
+    activity: Activity,
     onAuthSuccess: () -> Unit
 ) {
-    val executor = ContextCompat.getMainExecutor(activity)
+    // BiometricPrompt requires FragmentActivity
+    val fragmentActivity = activity as? FragmentActivity
+        ?: return // Silently fail if not FragmentActivity - user can use PIN instead
+    
+    val executor = ContextCompat.getMainExecutor(fragmentActivity)
     
     val biometricPrompt = BiometricPrompt(
-        activity,
+        fragmentActivity,
         executor,
         object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
