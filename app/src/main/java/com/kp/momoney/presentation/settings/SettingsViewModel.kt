@@ -127,6 +127,12 @@ class SettingsViewModel @Inject constructor(
                 result.fold(
                     onSuccess = {
                         // Success - currency updated
+                        // Log notification for currency change
+                        notificationRepository.logNotification(
+                            title = "Currency Changed",
+                            message = "Currency updated to $newCode",
+                            type = "SYSTEM"
+                        )
                     },
                     onFailure = { error ->
                         // Error handling could be added here (e.g., show snackbar)
@@ -168,6 +174,13 @@ class SettingsViewModel @Inject constructor(
                 
                 // Launch share chooser
                 context.startActivity(Intent.createChooser(intent, "Export via"))
+                
+                // Log notification for successful export
+                notificationRepository.logNotification(
+                    title = "Data Exported",
+                    message = "Your data was successfully exported.",
+                    type = "SYSTEM"
+                )
             } catch (e: Exception) {
                 // Error handling - could show a toast or snackbar
                 e.printStackTrace()

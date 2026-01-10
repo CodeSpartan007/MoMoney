@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.math.abs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -231,19 +232,30 @@ class AddTransactionViewModel @Inject constructor(
                                     endDate
                                 )
                                 
-                                // Log notifications based on thresholds
+                                // Log notifications based on 3-tier thresholds
+                                val limit = budget.limitAmount
                                 when {
-                                    totalSpending > budget.limitAmount -> {
+                                    // Tier 1: Exceeded
+                                    totalSpending > limit -> {
                                         notificationRepository.logNotification(
-                                            title = "Budget Exceeded!",
-                                            message = "You have exceeded your ${transaction.categoryName} budget",
+                                            title = "Budget Exceeded",
+                                            message = "You have overspent on ${transaction.categoryName}.",
                                             type = "BUDGET"
                                         )
                                     }
-                                    totalSpending > (budget.limitAmount * 0.9) -> {
+                                    // Tier 2: Reached (exactly 100% - using float safety)
+                                    abs(totalSpending - limit) < 0.1 -> {
+                                        notificationRepository.logNotification(
+                                            title = "Budget Reached",
+                                            message = "You have hit exactly 100% of your ${transaction.categoryName} budget.",
+                                            type = "BUDGET"
+                                        )
+                                    }
+                                    // Tier 3: Near (>= 90% but < 100%)
+                                    totalSpending >= (limit * 0.9) && totalSpending < limit -> {
                                         notificationRepository.logNotification(
                                             title = "Budget Alert",
-                                            message = "You are near your limit for ${transaction.categoryName}",
+                                            message = "You are close to the limit for ${transaction.categoryName}.",
                                             type = "BUDGET"
                                         )
                                     }
