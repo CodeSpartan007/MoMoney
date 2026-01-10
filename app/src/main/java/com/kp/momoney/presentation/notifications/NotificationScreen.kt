@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,10 +29,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,11 +47,7 @@ fun NotificationScreen(
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
     val notifications by viewModel.uiState.collectAsState()
-
-    // Mark all as read when screen is composed
-    LaunchedEffect(Unit) {
-        viewModel.markRead()
-    }
+    val unreadCount by viewModel.unreadCount.collectAsState()
 
     Scaffold(
         topBar = {
@@ -59,6 +58,19 @@ fun NotificationScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.markRead() }) {
+                        Icon(
+                            imageVector = Icons.Default.DoneAll,
+                            contentDescription = "Mark all as read",
+                            tint = if (unreadCount > 0) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.Gray
+                            }
                         )
                     }
                 }
@@ -100,9 +112,9 @@ fun NotificationItem(
 ) {
     val isUnread = !notification.isRead
     val backgroundColor = if (isUnread) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
     } else {
-        MaterialTheme.colorScheme.surface
+        Color.Transparent
     }
 
     Card(
@@ -111,63 +123,78 @@ fun NotificationItem(
             containerColor = backgroundColor
         )
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                text = notification.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = notification.message,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = formatNotificationTime(notification.timestamp),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = notification.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = notification.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
-                // Type badge
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = when (notification.type) {
-                                "BUDGET" -> MaterialTheme.colorScheme.errorContainer
-                                "SYSTEM" -> MaterialTheme.colorScheme.tertiaryContainer
-                                else -> MaterialTheme.colorScheme.secondaryContainer
-                            },
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
                     Text(
-                        text = notification.type,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when (notification.type) {
-                            "BUDGET" -> MaterialTheme.colorScheme.onErrorContainer
-                            "SYSTEM" -> MaterialTheme.colorScheme.onTertiaryContainer
-                            else -> MaterialTheme.colorScheme.onSecondaryContainer
-                        }
+                        text = formatNotificationTime(notification.timestamp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    // Type badge
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = when (notification.type) {
+                                    "BUDGET" -> MaterialTheme.colorScheme.errorContainer
+                                    "SYSTEM" -> MaterialTheme.colorScheme.tertiaryContainer
+                                    else -> MaterialTheme.colorScheme.secondaryContainer
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = notification.type,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = when (notification.type) {
+                                "BUDGET" -> MaterialTheme.colorScheme.onErrorContainer
+                                "SYSTEM" -> MaterialTheme.colorScheme.onTertiaryContainer
+                                else -> MaterialTheme.colorScheme.onSecondaryContainer
+                            }
+                        )
+                    }
                 }
+            }
+            
+            // Unread indicator icon
+            if (isUnread) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.DoneAll,
+                    contentDescription = "Unread",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

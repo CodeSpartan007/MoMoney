@@ -31,11 +31,6 @@ class NotificationViewModel @Inject constructor(
             initialValue = 0
         )
 
-    init {
-        // Mark all as read when ViewModel is created (screen opens)
-        markRead()
-    }
-
     fun markRead() {
         viewModelScope.launch {
             notificationRepository.markAllRead()
