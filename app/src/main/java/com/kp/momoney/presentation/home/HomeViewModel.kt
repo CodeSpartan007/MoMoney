@@ -235,8 +235,8 @@ class HomeViewModel @Inject constructor(
                 val transaction = transactionRepository.getTransactionById(id)
                 if (transaction != null) {
                     transactionRepository.deleteTransaction(transaction)
-                    // Add 3-second delay to simulate sync
-                    delay(3000)
+                    // Add 5-second delay to simulate sync
+                    delay(5000)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
