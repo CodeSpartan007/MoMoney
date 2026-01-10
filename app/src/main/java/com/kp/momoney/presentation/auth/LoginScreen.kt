@@ -1,6 +1,7 @@
 package com.kp.momoney.presentation.auth
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -20,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -31,12 +33,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -60,8 +68,12 @@ fun LoginScreen(
     val emailError by viewModel.emailError.collectAsState()
     val passwordError by viewModel.passwordError.collectAsState()
     val authState by viewModel.authState.collectAsState()
+    val resetPasswordState by viewModel.resetPasswordState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    var showResetPasswordDialog by remember { mutableStateOf(false) }
+    var resetPasswordEmail by remember { mutableStateOf("") }
 
     // Google Sign-In launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -78,6 +90,21 @@ fun LoginScreen(
             viewModel.resetState()
         } else if (authState is AuthState.Error) {
             snackbarHostState.showSnackbar((authState as AuthState.Error).message)
+        }
+    }
+
+    LaunchedEffect(resetPasswordState) {
+        when (resetPasswordState) {
+            is ResetPasswordState.Success -> {
+                Toast.makeText(context, "Reset link sent to your email", Toast.LENGTH_SHORT).show()
+                showResetPasswordDialog = false
+                resetPasswordEmail = ""
+                viewModel.resetPasswordState()
+            }
+            is ResetPasswordState.Error -> {
+                Toast.makeText(context, resetPasswordState.message, Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
         }
     }
 
@@ -158,6 +185,17 @@ fun LoginScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
 
+                // Forgot Password Button
+                TextButton(
+                    onClick = { showResetPasswordDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Forgot Password?",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
@@ -231,6 +269,65 @@ fun LoginScreen(
             
             // Loading Overlay
             LoadingOverlay(isLoading = authState is AuthState.Loading)
+        }
+
+        // Reset Password Dialog
+        if (showResetPasswordDialog) {
+            val focusRequester = remember { FocusRequester() }
+            
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
+            
+            AlertDialog(
+                onDismissRequest = {
+                    showResetPasswordDialog = false
+                    resetPasswordEmail = ""
+                },
+                title = { Text("Reset Password") },
+                text = {
+                    OutlinedTextField(
+                        value = resetPasswordEmail,
+                        onValueChange = { resetPasswordEmail = it },
+                        label = { Text("Email") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = resetPasswordState !is ResetPasswordState.Loading
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.resetPassword(resetPasswordEmail)
+                        },
+                        enabled = resetPasswordState !is ResetPasswordState.Loading
+                    ) {
+                        if (resetPasswordState is ResetPasswordState.Loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Send Email")
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showResetPasswordDialog = false
+                            resetPasswordEmail = ""
+                        },
+                        enabled = resetPasswordState !is ResetPasswordState.Loading
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

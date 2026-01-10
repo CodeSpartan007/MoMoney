@@ -24,6 +24,13 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
 }
 
+sealed class ResetPasswordState {
+    object Idle : ResetPasswordState()
+    object Loading : ResetPasswordState()
+    object Success : ResetPasswordState()
+    data class Error(val message: String) : ResetPasswordState()
+}
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
@@ -49,6 +56,9 @@ class AuthViewModel @Inject constructor(
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+
+    private val _resetPasswordState = MutableStateFlow<ResetPasswordState>(ResetPasswordState.Idle)
+    val resetPasswordState: StateFlow<ResetPasswordState> = _resetPasswordState.asStateFlow()
 
     fun onEmailChanged(value: String) {
         _email.value = value
@@ -141,6 +151,33 @@ class AuthViewModel @Inject constructor(
 
     fun resetState() {
         _authState.value = AuthState.Idle
+    }
+
+    fun resetPassword(email: String) {
+        // Validate email is not empty
+        if (email.isBlank()) {
+            _resetPasswordState.value = ResetPasswordState.Error("Email cannot be empty")
+            return
+        }
+
+        viewModelScope.launch {
+            _resetPasswordState.value = ResetPasswordState.Loading
+            authRepository.sendPasswordResetEmail(email.trim()).collect { result ->
+                result.fold(
+                    onSuccess = {
+                        _resetPasswordState.value = ResetPasswordState.Success
+                    },
+                    onFailure = { error ->
+                        val errorMessage = mapAuthException(error)
+                        _resetPasswordState.value = ResetPasswordState.Error(errorMessage)
+                    }
+                )
+            }
+        }
+    }
+
+    fun resetPasswordState() {
+        _resetPasswordState.value = ResetPasswordState.Idle
     }
 
     fun getGoogleSignInIntent(): Intent {
