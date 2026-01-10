@@ -9,6 +9,7 @@ import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.DateUtils
+import com.kp.momoney.util.toBaseCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -49,18 +50,24 @@ class BudgetViewModel @Inject constructor(
     fun updateBudgetLimit(categoryId: Int, limitAmount: Double) {
         viewModelScope.launch {
             try {
-                // Your existing logic is perfect here
+                // Get current currency state to convert from user currency to base currency
+                val currencyState = currencyPreference.first()
+                
+                // Convert amount from user currency (e.g., USD) to base currency (KES)
+                // The amount comes from the UI in the user's currency, so we need to convert it back
+                val amountInBase = limitAmount.toBaseCurrency(currencyState.exchangeRate)
+                
                 val startDate = DateUtils.getCurrentMonthStart()
                 val endDate = DateUtils.getCurrentMonthEnd()
 
                 val existingBudget = budgetRepository.getBudgetForCategory(categoryId)
 
                 val budget = if (existingBudget != null) {
-                    existingBudget.copy(limitAmount = limitAmount)
+                    existingBudget.copy(limitAmount = amountInBase)
                 } else {
                     BudgetEntity(
                         categoryId = categoryId,
-                        limitAmount = limitAmount,
+                        limitAmount = amountInBase,
                         startDate = startDate,
                         endDate = endDate
                     )

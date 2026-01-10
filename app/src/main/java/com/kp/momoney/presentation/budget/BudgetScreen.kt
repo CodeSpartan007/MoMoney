@@ -118,8 +118,11 @@ fun BudgetScreen(
                             currencyPreference = uiState.currencyPreference,
                             onEditClick = {
                                 showEditDialog = budget
+                                // Convert from base currency (KES) to user currency for display
+                                // Multiply by rate to show the user's expected number
                                 editAmountText = if (budget.limitAmount > 0.0) {
-                                    String.format("%.2f", budget.limitAmount)
+                                    val amountInUserCurrency = budget.limitAmount * uiState.currencyPreference.exchangeRate
+                                    String.format("%.2f", amountInUserCurrency)
                                 } else {
                                     ""
                                 }
@@ -131,8 +134,9 @@ fun BudgetScreen(
         }
     }
 
-    // Edit Dialog Logic (Kept exactly as you had it)
+    // Edit Dialog Logic
     showEditDialog?.let { budget ->
+        val currencyState = uiState.currencyPreference
         AlertDialog(
             onDismissRequest = { showEditDialog = null },
             title = { Text("Edit Budget: ${budget.category.name}") },
@@ -143,10 +147,10 @@ fun BudgetScreen(
                     OutlinedTextField(
                         value = editAmountText,
                         onValueChange = { editAmountText = it },
-                        label = { Text("Budget Limit") },
+                        label = { Text("Amount (${currencyState.currencySymbol})") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        prefix = { Text("Ksh ") }
+                        prefix = { Text("${currencyState.currencySymbol} ") }
                     )
                 }
             },
@@ -155,6 +159,7 @@ fun BudgetScreen(
                     onClick = {
                         val amount = editAmountText.toDoubleOrNull() ?: 0.0
                         // Allow 0.0 to clear budget
+                        // Amount is in user currency, ViewModel will convert to base currency
                         if (amount >= 0) {
                             viewModel.updateBudgetLimit(budget.category.id, amount)
                             showEditDialog = null
