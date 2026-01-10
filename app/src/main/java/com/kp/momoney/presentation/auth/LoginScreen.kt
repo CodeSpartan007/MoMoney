@@ -94,17 +94,18 @@ fun LoginScreen(
     }
 
     LaunchedEffect(resetPasswordState) {
-        when (resetPasswordState) {
-            is ResetPasswordState.Success -> {
+        val state = resetPasswordState
+        when {
+            state is ResetPasswordState.Success -> {
                 Toast.makeText(context, "Reset link sent to your email", Toast.LENGTH_SHORT).show()
                 showResetPasswordDialog = false
                 resetPasswordEmail = ""
                 viewModel.resetPasswordState()
             }
-            is ResetPasswordState.Error -> {
-                Toast.makeText(context, resetPasswordState.message, Toast.LENGTH_SHORT).show()
+            state is ResetPasswordState.Error -> {
+                val errorState = state as ResetPasswordState.Error
+                Toast.makeText(context, errorState.message, Toast.LENGTH_SHORT).show()
             }
-            else -> {}
         }
     }
 
