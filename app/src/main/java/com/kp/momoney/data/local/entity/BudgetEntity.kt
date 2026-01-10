@@ -16,7 +16,7 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        androidx.room.Index(value = ["category_id"]),
+        androidx.room.Index(value = ["category_id"], unique = true),
         androidx.room.Index(value = ["firestore_id"], unique = true)
     ]
 )
