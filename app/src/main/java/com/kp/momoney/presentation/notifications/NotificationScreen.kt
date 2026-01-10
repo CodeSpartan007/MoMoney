@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -48,6 +51,7 @@ fun NotificationScreen(
 ) {
     val notifications by viewModel.uiState.collectAsState()
     val unreadCount by viewModel.unreadCount.collectAsState()
+    val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
 
     Scaffold(
         topBar = {
@@ -62,6 +66,13 @@ fun NotificationScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.onDeleteClicked() }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete read notifications",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                     IconButton(onClick = { viewModel.markRead() }) {
                         Icon(
                             imageVector = Icons.Default.DoneAll,
@@ -103,6 +114,32 @@ fun NotificationScreen(
                 }
             }
         }
+    }
+    
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onDeleteDismissed() },
+            title = {
+                Text("Delete Read Notifications?")
+            },
+            text = {
+                Text("This will remove all notifications that you have already read. This action cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onDeleteConfirmed() }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.onDeleteDismissed() }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
