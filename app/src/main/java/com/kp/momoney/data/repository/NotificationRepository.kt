@@ -29,5 +29,9 @@ class NotificationRepository @Inject constructor(
     suspend fun markAllRead() {
         notificationDao.markAllAsRead()
     }
+    
+    suspend fun deleteReadNotifications() {
+        notificationDao.deleteReadNotifications()
+    }
 }
 
