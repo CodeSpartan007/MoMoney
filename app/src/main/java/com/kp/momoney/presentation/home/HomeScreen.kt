@@ -64,6 +64,8 @@ import com.kp.momoney.R
 import com.kp.momoney.presentation.home.components.SearchFilterBar
 import com.kp.momoney.presentation.home.components.FilterSheet
 import com.kp.momoney.presentation.common.AppLoadingAnimation
+import com.kp.momoney.presentation.common.NotificationBell
+import com.kp.momoney.presentation.notifications.NotificationViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -71,8 +73,10 @@ import com.kp.momoney.presentation.common.AppLoadingAnimation
 fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToEditTransaction: (Long) -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     navController: NavController? = null,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    notificationViewModel: NotificationViewModel = hiltViewModel()
 ) {
     // FIX: Use collectAsState() to listen for real-time updates
     val uiState by viewModel.uiState.collectAsState()
@@ -84,6 +88,7 @@ fun HomeScreen(
     val filterMaxAmount by viewModel.filterMaxAmount.collectAsState()
     val selectedTransactionId by viewModel.selectedTransactionId.collectAsState()
     val isLoadingAction by viewModel.isLoadingAction.collectAsState()
+    val unreadCount by notificationViewModel.unreadCount.collectAsState()
     
     var showFilterSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -165,6 +170,10 @@ fun HomeScreen(
                         }
                     },
                     actions = {
+                        NotificationBell(
+                            unreadCount = unreadCount,
+                            onClick = onNavigateToNotifications
+                        )
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,

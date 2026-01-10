@@ -17,6 +17,7 @@ import com.kp.momoney.presentation.add_transaction.AddTransactionScreen
 import com.kp.momoney.presentation.budget.BudgetScreen
 import com.kp.momoney.presentation.category.CategoryManagerScreen
 import com.kp.momoney.presentation.home.HomeScreen
+import com.kp.momoney.presentation.notifications.NotificationScreen
 import com.kp.momoney.presentation.reports.ReportsScreen
 import com.kp.momoney.presentation.settings.SettingsScreen
 import com.kp.momoney.presentation.splash.SplashScreen
@@ -90,6 +91,9 @@ fun AppNavHost(
                 onNavigateToEditTransaction = { transactionId ->
                     navController.navigate(Screen.AddTransaction.createRoute(transactionId))
                 },
+                onNavigateToNotifications = {
+                    navController.navigate(Screen.Notifications.route)
+                },
                 navController = navController
             )
         }
@@ -134,6 +138,12 @@ fun AppNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 themeConfig = themeConfig,
                 onThemeChanged = onThemeChanged
+            )
+        }
+        
+        composable(Screen.Notifications.route) {
+            NotificationScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
