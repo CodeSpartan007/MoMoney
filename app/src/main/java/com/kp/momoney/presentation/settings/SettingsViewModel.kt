@@ -11,6 +11,7 @@ import com.kp.momoney.data.local.AppTheme
 import com.kp.momoney.data.local.CurrencyPreference
 import com.kp.momoney.data.local.UserPreferencesRepository
 import com.kp.momoney.data.repository.AppLockRepository
+import com.kp.momoney.data.repository.NotificationRepository
 import com.kp.momoney.domain.repository.CurrencyRepository
 import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.CsvUtils
@@ -31,7 +32,8 @@ class SettingsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val currencyRepository: CurrencyRepository,
-    private val appLockRepository: AppLockRepository
+    private val appLockRepository: AppLockRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     val userEmail: String
@@ -185,6 +187,14 @@ class SettingsViewModel @Inject constructor(
      */
     fun onPinSetupSuccess() {
         _showPinSetup.value = false
+        // Log notification for app lock enabled
+        viewModelScope.launch {
+            notificationRepository.logNotification(
+                title = "Security Update",
+                message = "App Lock Enabled",
+                type = "SYSTEM"
+            )
+        }
     }
 
     /**
@@ -210,6 +220,12 @@ class SettingsViewModel @Inject constructor(
             val isValid = appLockRepository.verifyPin(pin)
             if (isValid) {
                 appLockRepository.disableAppLock()
+                // Log notification for app lock disabled
+                notificationRepository.logNotification(
+                    title = "Security Update",
+                    message = "App Lock Disabled",
+                    type = "SYSTEM"
+                )
                 _showPinVerification.value = false
                 _pinVerificationError.value = null
             } else {

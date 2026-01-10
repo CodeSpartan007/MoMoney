@@ -2,6 +2,7 @@ package com.kp.momoney.presentation.category
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kp.momoney.data.repository.NotificationRepository
 import com.kp.momoney.data.util.ConnectivityObserver
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.repository.CategoryRepository
@@ -23,6 +24,7 @@ sealed class CategoryEvent {
 @HiltViewModel
 class CategoryViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
+    private val notificationRepository: NotificationRepository,
     connectivityObserver: ConnectivityObserver
 ) : ViewModel() {
 
@@ -102,6 +104,13 @@ class CategoryViewModel @Inject constructor(
                     color = selectedColor.value
                 )
                 
+                // Log notification for category creation
+                notificationRepository.logNotification(
+                    title = "Category Created",
+                    message = "You added '$name'",
+                    type = "INFO"
+                )
+                
                 // Repository returns immediately (optimistic update)
                 // Reset form immediately
                 categoryName.value = ""
@@ -167,7 +176,18 @@ class CategoryViewModel @Inject constructor(
             try {
                 _isLoadingDelete.value = true
                 
+                // Get category name before deletion for notification
+                val category = categoryRepository.getCategoryById(categoryId)
+                val categoryName = category?.name ?: "Category"
+                
                 categoryRepository.deleteCategory(categoryId)
+                
+                // Log notification for category deletion
+                notificationRepository.logNotification(
+                    title = "Category Deleted",
+                    message = "You deleted '$categoryName'",
+                    type = "INFO"
+                )
                 
                 // Repository returns immediately (optimistic update)
                 // Set loading to false immediately after repository call returns

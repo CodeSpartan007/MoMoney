@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.domain.model.Transaction
+import com.kp.momoney.data.repository.NotificationRepository
 import com.kp.momoney.domain.repository.BudgetRepository
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.CurrencyRepository
@@ -13,6 +14,7 @@ import com.kp.momoney.domain.repository.TransactionRepository
 import com.kp.momoney.util.DateUtils
 import com.kp.momoney.util.toBaseCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +37,7 @@ class AddTransactionViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val budgetRepository: BudgetRepository,
     private val currencyRepository: CurrencyRepository,
+    private val notificationRepository: NotificationRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -212,44 +215,49 @@ class AddTransactionViewModel @Inject constructor(
                 // Repository now returns immediately after Room write
                 // No need for artificial delay
                 
-                // Check budget for expense transactions only
-                var budgetAlertMessage: String? = null
+                // Check budget for expense transactions only (in background to not block UI)
                 if (transactionType.equals("Expense", ignoreCase = true)) {
-                    try {
-                        val budget = budgetRepository.getBudgetForCategory(categoryId)
-                        if (budget != null && budget.limitAmount > 0) {
-                            val startDate = DateUtils.getCurrentMonthStart()
-                            val endDate = DateUtils.getCurrentMonthEnd()
-                            
-                            // Get current spending for this category (includes the transaction we just saved)
-                            val totalSpending = transactionRepository.getCategorySpendingForCategory(
-                                categoryId,
-                                startDate,
-                                endDate
-                            )
-                            
-                            // Determine alert message based on thresholds
-                            when {
-                                totalSpending > budget.limitAmount -> {
-                                    budgetAlertMessage = "Alert: You have exceeded your ${transaction.categoryName} budget!"
-                                }
-                                totalSpending > (budget.limitAmount * 0.9) -> {
-                                    budgetAlertMessage = "Warning: You are nearing your ${transaction.categoryName} budget limit."
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            val budget = budgetRepository.getBudgetForCategory(categoryId)
+                            if (budget != null && budget.limitAmount > 0) {
+                                val startDate = DateUtils.getCurrentMonthStart()
+                                val endDate = DateUtils.getCurrentMonthEnd()
+                                
+                                // Get current spending for this category (includes the transaction we just saved)
+                                val totalSpending = transactionRepository.getCategorySpendingForCategory(
+                                    categoryId,
+                                    startDate,
+                                    endDate
+                                )
+                                
+                                // Log notifications based on thresholds
+                                when {
+                                    totalSpending > budget.limitAmount -> {
+                                        notificationRepository.logNotification(
+                                            title = "Budget Exceeded!",
+                                            message = "You have exceeded your ${transaction.categoryName} budget",
+                                            type = "BUDGET"
+                                        )
+                                    }
+                                    totalSpending > (budget.limitAmount * 0.9) -> {
+                                        notificationRepository.logNotification(
+                                            title = "Budget Alert",
+                                            message = "You are near your limit for ${transaction.categoryName}",
+                                            type = "BUDGET"
+                                        )
+                                    }
                                 }
                             }
+                        } catch (e: Exception) {
+                            // Log error but don't block transaction save
+                            e.printStackTrace()
                         }
-                    } catch (e: Exception) {
-                        // Log error but don't block transaction save
-                        e.printStackTrace()
                     }
                 }
                 
-                // Emit event with budget alert message if any
-                _event.value = if (budgetAlertMessage != null) {
-                    AddTransactionEvent.MapsBackWithResult(budgetAlertMessage)
-                } else {
-                    AddTransactionEvent.Success
-                }
+                // Emit success event
+                _event.value = AddTransactionEvent.Success
                 
                 // Clear form only if not in edit mode
                 if (!isEditMode) {
