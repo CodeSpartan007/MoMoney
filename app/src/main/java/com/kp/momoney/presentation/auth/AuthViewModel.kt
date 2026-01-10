@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseUser
 import com.kp.momoney.domain.repository.AuthRepository
 import com.kp.momoney.domain.repository.CategoryRepository
 import com.kp.momoney.domain.repository.TransactionRepository
+import com.kp.momoney.util.mapAuthException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -40,6 +41,12 @@ class AuthViewModel @Inject constructor(
     private val _isPasswordVisible = MutableStateFlow(false)
     val isPasswordVisible: StateFlow<Boolean> = _isPasswordVisible.asStateFlow()
 
+    private val _emailError = MutableStateFlow<String?>(null)
+    val emailError: StateFlow<String?> = _emailError.asStateFlow()
+
+    private val _passwordError = MutableStateFlow<String?>(null)
+    val passwordError: StateFlow<String?> = _passwordError.asStateFlow()
+
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
@@ -59,9 +66,12 @@ class AuthViewModel @Inject constructor(
         val email = _email.value.trim()
         val password = _password.value
 
-        val validationError = validate(email, password)
-        if (validationError != null) {
-            _authState.value = AuthState.Error(validationError)
+        // Clear errors at the start of every new attempt
+        _emailError.value = null
+        _passwordError.value = null
+
+        // Validate inputs before calling Firebase
+        if (!validateInputs(email, password)) {
             return
         }
 
@@ -85,7 +95,8 @@ class AuthViewModel @Inject constructor(
                         }
                     },
                     onFailure = { error ->
-                        _authState.value = AuthState.Error(error.message ?: "Login failed")
+                        val errorMessage = mapAuthException(error)
+                        _authState.value = AuthState.Error(errorMessage)
                     }
                 )
             }
@@ -96,9 +107,12 @@ class AuthViewModel @Inject constructor(
         val email = _email.value.trim()
         val password = _password.value
 
-        val validationError = validate(email, password)
-        if (validationError != null) {
-            _authState.value = AuthState.Error(validationError)
+        // Clear errors at the start of every new attempt
+        _emailError.value = null
+        _passwordError.value = null
+
+        // Validate inputs before calling Firebase
+        if (!validateInputs(email, password)) {
             return
         }
 
@@ -108,7 +122,8 @@ class AuthViewModel @Inject constructor(
                 result.fold(
                     onSuccess = { user -> _authState.value = AuthState.Success(user) },
                     onFailure = { error ->
-                        _authState.value = AuthState.Error(error.message ?: "Registration failed")
+                        val errorMessage = mapAuthException(error)
+                        _authState.value = AuthState.Error(errorMessage)
                     }
                 )
             }
@@ -156,14 +171,30 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun validate(email: String, password: String): String? {
+    /**
+     * Validates email and password inputs and sets individual error StateFlows.
+     * @return true if validation passes, false otherwise
+     */
+    private fun validateInputs(email: String, password: String): Boolean {
+        var isValid = true
+
+        // Validate email
         if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            return "Please enter a valid email"
+            _emailError.value = "Invalid email format"
+            isValid = false
+        } else {
+            _emailError.value = null
         }
+
+        // Validate password
         if (password.length < 6) {
-            return "Password must be at least 6 characters"
+            _passwordError.value = "Password too short (min 6 chars)"
+            isValid = false
+        } else {
+            _passwordError.value = null
         }
-        return null
+
+        return isValid
     }
 }
 
