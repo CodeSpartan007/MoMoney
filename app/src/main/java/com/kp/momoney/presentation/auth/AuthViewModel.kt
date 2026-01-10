@@ -52,10 +52,14 @@ class AuthViewModel @Inject constructor(
 
     fun onEmailChanged(value: String) {
         _email.value = value
+        // Clear email error when user starts typing
+        _emailError.value = null
     }
 
     fun onPasswordChanged(value: String) {
         _password.value = value
+        // Clear password error when user starts typing
+        _passwordError.value = null
     }
 
     fun togglePasswordVisibility() {

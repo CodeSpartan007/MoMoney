@@ -27,10 +27,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,7 +57,11 @@ fun LoginScreen(
     val email by viewModel.email.collectAsState()
     val password by viewModel.password.collectAsState()
     val isPasswordVisible by viewModel.isPasswordVisible.collectAsState()
+    val emailError by viewModel.emailError.collectAsState()
+    val passwordError by viewModel.passwordError.collectAsState()
     val authState by viewModel.authState.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Google Sign-In launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -68,148 +76,162 @@ fun LoginScreen(
         if (authState is AuthState.Success) {
             onLoginSuccess()
             viewModel.resetState()
+        } else if (authState is AuthState.Error) {
+            snackbarHostState.showSnackbar((authState as AuthState.Error).message)
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_logo_mini),
-            contentDescription = "App Logo",
-            modifier = Modifier
-                .size(80.dp)
-                .padding(bottom = 16.dp)
-        )
-        Text(
-            text = "Welcome back",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Text(
-            text = "Sign in to continue",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = viewModel::onEmailChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = viewModel::onPasswordChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = viewModel::togglePasswordVisibility) {
-                    val icon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
-                    val description = if (isPasswordVisible) "Hide password" else "Show password"
-                    Icon(imageVector = icon, contentDescription = description)
-                }
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-        )
-
-        if (authState is AuthState.Error) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = (authState as AuthState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = viewModel::login,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = authState !is AuthState.Loading
-        ) {
-            if (authState is AuthState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .height(18.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text("Login")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Divider
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "OR",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Google Sign-In Button
-        OutlinedButton(
-            onClick = {
-                val signInIntent = viewModel.getGoogleSignInIntent()
-                googleSignInLauncher.launch(signInIntent)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = authState !is AuthState.Loading
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Google Icon - using a styled "G" text as placeholder
-                // In production, you'd use the actual Google logo vector drawable
-                Text(
-                    text = "G",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(end = 8.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.ic_logo_mini),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(80.dp)
+                        .padding(bottom = 16.dp)
                 )
-                Text("Sign in with Google")
+                Text(
+                    text = "Welcome back",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(
+                    text = "Sign in to continue",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = viewModel::onEmailChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Email") },
+                    singleLine = true,
+                    isError = emailError != null,
+                    supportingText = {
+                        if (emailError != null) {
+                            Text(
+                                text = emailError!!,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = viewModel::onPasswordChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Password") },
+                    singleLine = true,
+                    isError = passwordError != null,
+                    supportingText = {
+                        if (passwordError != null) {
+                            Text(
+                                text = passwordError!!,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = viewModel::togglePasswordVisibility) {
+                            val icon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                            val description = if (isPasswordVisible) "Hide password" else "Show password"
+                            Icon(imageVector = icon, contentDescription = description)
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = viewModel::login,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authState !is AuthState.Loading
+                ) {
+                    if (authState is AuthState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .height(18.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Login")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Divider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "OR",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Google Sign-In Button
+                OutlinedButton(
+                    onClick = {
+                        val signInIntent = viewModel.getGoogleSignInIntent()
+                        googleSignInLauncher.launch(signInIntent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authState !is AuthState.Loading
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        // Google Icon - using a styled "G" text as placeholder
+                        // In production, you'd use the actual Google logo vector drawable
+                        Text(
+                            text = "G",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Sign in with Google")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Don't have an account? Sign Up",
+                    modifier = Modifier.clickable(onClick = onNavigateToRegister),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
+            
+            // Loading Overlay
+            LoadingOverlay(isLoading = authState is AuthState.Loading)
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Don't have an account? Sign Up",
-            modifier = Modifier.clickable(onClick = onNavigateToRegister),
-            color = MaterialTheme.colorScheme.primary
-        )
-        }
-        
-        // Loading Overlay
-        LoadingOverlay(isLoading = authState is AuthState.Loading)
     }
 }
 
