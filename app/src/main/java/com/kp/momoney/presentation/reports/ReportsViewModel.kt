@@ -278,11 +278,14 @@ class ReportsViewModel @Inject constructor(
     fun exportData(context: Context) {
         viewModelScope.launch {
             try {
+                // Fetch current currency preference
+                val currencyState = currencyRepository.getCurrencyPreference().first()
+                
                 // Fetch all transactions
                 val transactions = transactionRepository.getAllTransactions().first()
                 
-                // Generate CSV string
-                val csvContent = CsvUtils.generateCsv(transactions)
+                // Generate CSV string with currency conversion
+                val csvContent = CsvUtils.generateCsv(transactions, currencyState)
                 
                 // Write to file
                 val file = File(context.cacheDir, "finance_export.csv")

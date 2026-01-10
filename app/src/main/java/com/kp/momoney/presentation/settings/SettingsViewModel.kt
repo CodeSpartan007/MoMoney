@@ -148,11 +148,14 @@ class SettingsViewModel @Inject constructor(
     fun exportData(context: Context) {
         viewModelScope.launch {
             try {
+                // Fetch current currency preference
+                val currencyState = currencyRepository.getCurrencyPreference().first()
+                
                 // Fetch all transactions
                 val transactions = transactionRepository.getAllTransactions().first()
                 
-                // Generate CSV string
-                val csvContent = CsvUtils.generateCsv(transactions)
+                // Generate CSV string with currency conversion
+                val csvContent = CsvUtils.generateCsv(transactions, currencyState)
                 
                 // Write to file
                 val file = File(context.cacheDir, "finance_export.csv")
@@ -175,11 +178,11 @@ class SettingsViewModel @Inject constructor(
                 // Launch share chooser
                 context.startActivity(Intent.createChooser(intent, "Export via"))
                 
-                // Log notification for successful export
+                // Log notification for successful export with currency info
                 notificationRepository.logNotification(
                     title = "Data Exported",
-                    message = "Your data was successfully exported.",
-                    type = "SYSTEM"
+                    message = "Your transactions have been exported in ${currencyState.currencyCode}.",
+                    type = "INFO"
                 )
             } catch (e: Exception) {
                 // Error handling - could show a toast or snackbar
