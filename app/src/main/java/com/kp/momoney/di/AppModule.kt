@@ -7,6 +7,8 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.kp.momoney.data.local.dao.NotificationDao
+import com.kp.momoney.data.repository.NotificationRepository
 import com.kp.momoney.data.remote.ExchangeRateApi
 import com.kp.momoney.data.util.ConnectivityObserver
 import com.kp.momoney.data.util.NetworkConnectivityObserver
@@ -57,6 +59,12 @@ object AppModule {
     @Singleton
     fun provideExchangeRateApi(retrofit: Retrofit): ExchangeRateApi {
         return retrofit.create(ExchangeRateApi::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(notificationDao: NotificationDao): NotificationRepository {
+        return NotificationRepository(notificationDao)
     }
 }
 

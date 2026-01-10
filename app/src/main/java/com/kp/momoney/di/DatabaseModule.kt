@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kp.momoney.data.local.AppDatabase
 import com.kp.momoney.data.local.dao.BudgetDao
 import com.kp.momoney.data.local.dao.CategoryDao
+import com.kp.momoney.data.local.dao.NotificationDao
 import com.kp.momoney.data.local.dao.TransactionDao
 import dagger.Module
 import dagger.Provides
@@ -110,6 +111,12 @@ object DatabaseModule {
     @Singleton
     fun provideBudgetDao(database: AppDatabase): BudgetDao {
         return database.budgetDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideNotificationDao(database: AppDatabase): NotificationDao {
+        return database.notificationDao()
     }
 }
 
