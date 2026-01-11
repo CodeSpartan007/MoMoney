@@ -122,7 +122,7 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 OutlinedTextField(
                         value = email,
@@ -180,6 +180,12 @@ fun LoginScreen(
                                         .padding(vertical = 8.dp),
                         color = MaterialTheme.colorScheme.primary
                 )
+
+                // Forgot Password Button
+                TextButton(
+                        onClick = { showResetPasswordDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                ) { Text(text = "Forgot Password?", style = MaterialTheme.typography.bodySmall) }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -241,14 +247,6 @@ fun LoginScreen(
                         Text("Sign in with Google")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Forgot Password Button
-                TextButton(
-                        onClick = { showResetPasswordDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                ) { Text(text = "Forgot Password?", style = MaterialTheme.typography.bodySmall) }
             }
 
             // Loading Overlay
