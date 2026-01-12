@@ -96,8 +96,7 @@ class AuthViewModel @Inject constructor(
                     onSuccess = { user ->
                         // Sync user data (Transactions + Categories) from Firestore
                         try {
-                            transactionRepository.syncTransactions()
-                            categoryRepository.syncCategories()
+                            transactionRepository.syncUserData()
                             
                             // Delay to simulate heavy download and allow user to enjoy the animation
                             delay(3000)
@@ -192,8 +191,7 @@ class AuthViewModel @Inject constructor(
                     onSuccess = { user ->
                         // Sync user data (Transactions + Categories) from Firestore
                         try {
-                            transactionRepository.syncTransactions()
-                            categoryRepository.syncCategories()
+                            transactionRepository.syncUserData()
                             
                             // Delay to simulate heavy download and allow user to enjoy the animation
                             delay(3000)

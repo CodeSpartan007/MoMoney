@@ -9,7 +9,6 @@ import com.kp.momoney.data.local.entity.TransactionWithCategory
 import com.kp.momoney.data.mapper.toFirestoreMap
 import com.kp.momoney.data.mapper.toFirestoreTransactionData
 import com.kp.momoney.domain.model.BudgetState
-import com.kp.momoney.domain.model.Category
 import com.kp.momoney.domain.model.Recurrence
 import com.kp.momoney.domain.model.Transaction
 import com.kp.momoney.domain.repository.CategoryRepository
@@ -23,12 +22,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import android.util.Log
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 class TransactionRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
@@ -43,9 +44,11 @@ class TransactionRepositoryImpl @Inject constructor(
         get() = auth.currentUser?.uid
     
     override fun getAllTransactions(): Flow<List<Transaction>> {
-        return transactionDao.getAllTransactions().map { transactions ->
-            transactions.map { it.toDomain() }
-        }
+        return transactionDao.getAllTransactions()
+            .distinctUntilChanged()
+            .map { transactions ->
+                transactions.map { it.toDomain() }
+            }
     }
     
     override fun getTransactionsByDateRange(startDate: Long, endDate: Long): Flow<List<Transaction>> {
@@ -225,6 +228,17 @@ class TransactionRepositoryImpl @Inject constructor(
             firestoreId = firestoreId,
             recurrence = recurrence.name
         )
+    }
+    
+    override suspend fun syncUserData() = withContext(Dispatchers.IO) {
+        logSyncEvent("START: Syncing Categories")
+        val categoryCount = categoryRepository.syncCategories()
+        logSyncEvent("FINISH: Syncing Categories")
+        Log.d("TransactionRepo", "Categories synced: $categoryCount")
+        
+        logSyncEvent("START: Syncing Transactions")
+        syncTransactions()
+        logSyncEvent("FINISH: Syncing Transactions")
     }
     
     override suspend fun syncTransactions() {
@@ -473,6 +487,10 @@ class TransactionRepositoryImpl @Inject constructor(
             Log.e("RecurrenceWorker", "Error processing recurring transactions", e)
             // Don't throw - we don't want to crash the app if recurrence processing fails
         }
+    }
+    
+    private fun logSyncEvent(message: String) {
+        Log.d("SyncUserData", "${System.currentTimeMillis()} - $message")
     }
     
     /**

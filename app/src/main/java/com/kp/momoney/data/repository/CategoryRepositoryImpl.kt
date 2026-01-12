@@ -81,10 +81,10 @@ class CategoryRepositoryImpl @Inject constructor(
         // Method returns immediately here - no await() blocking
     }
     
-    override suspend fun syncCategories() {
+    override suspend fun syncCategories(): Int {
         val userId = currentUserId ?: run {
             Log.d("CategoryRepo", "No authenticated user, skipping category sync")
-            return
+            return 0
         }
         
         try {
@@ -148,6 +148,7 @@ class CategoryRepositoryImpl @Inject constructor(
             }
             
             Log.d("CategoryRepo", "Successfully synced ${firestoreCategories.size} categories to Room")
+            return firestoreCategories.size
         } catch (e: Exception) {
             Log.e("CategoryRepo", "Failed to sync categories from Firestore", e)
             throw e
@@ -169,53 +170,52 @@ class CategoryRepositoryImpl @Inject constructor(
         // Step 2: Fire-and-forget: Launch Firestore deletion in background
         // Return immediately without waiting for network
         currentUserId?.let { userId ->
-            firestoreId?.let { fsId ->
-                backgroundScope.launch {
-                    try {
-                        // Use batched write for atomic deletion
-                        val batch = firestore.batch()
-                        
-                        // Step 1: Delete the category document
-                        val categoryRef = firestore.collection("users")
-                            .document(userId)
-                            .collection("categories")
-                            .document(fsId)
-                        batch.delete(categoryRef)
-                        
-                        // Step 2: Query and delete related transactions (by categoryName)
-                        val transactionsSnapshot = firestore.collection("users")
-                            .document(userId)
-                            .collection("transactions")
-                            .whereEqualTo("categoryName", categoryName)
-                            .get()
-                            .await()
-                        
-                        transactionsSnapshot.documents.forEach { doc ->
-                            batch.delete(doc.reference)
-                        }
-                        Log.d("CategoryRepo", "Found ${transactionsSnapshot.documents.size} transactions to delete")
-                        
-                        // Step 3: Query and delete related budgets (by categoryId - local ID)
-                        val budgetsSnapshot = firestore.collection("users")
-                            .document(userId)
-                            .collection("budgets")
-                            .whereEqualTo("categoryId", categoryId.toLong())
-                            .get()
-                            .await()
-                        
-                        budgetsSnapshot.documents.forEach { doc ->
-                            batch.delete(doc.reference)
-                        }
-                        Log.d("CategoryRepo", "Found ${budgetsSnapshot.documents.size} budgets to delete")
-                        
-                        // Commit the batch
-                        batch.commit().await()
-                        Log.d("CategoryRepo", "Category and related data deleted from Firestore: $fsId")
-                    } catch (e: Exception) {
-                        Log.e("CategoryRepo", "Failed to delete category from Firestore", e)
-                        // Firestore SDK will queue the operation automatically when offline
-                        // The deletion will be synced when connection is restored
+            val fsId = firestoreId
+            backgroundScope.launch {
+                try {
+                    // Use batched write for atomic deletion
+                    val batch = firestore.batch()
+                    
+                    // Step 1: Delete the category document
+                    val categoryRef = firestore.collection("users")
+                        .document(userId)
+                        .collection("categories")
+                        .document(fsId)
+                    batch.delete(categoryRef)
+                    
+                    // Step 2: Query and delete related transactions (by categoryName)
+                    val transactionsSnapshot = firestore.collection("users")
+                        .document(userId)
+                        .collection("transactions")
+                        .whereEqualTo("categoryName", categoryName)
+                        .get()
+                        .await()
+                    
+                    transactionsSnapshot.documents.forEach { doc ->
+                        batch.delete(doc.reference)
                     }
+                    Log.d("CategoryRepo", "Found ${transactionsSnapshot.documents.size} transactions to delete")
+                    
+                    // Step 3: Query and delete related budgets (by categoryId - local ID)
+                    val budgetsSnapshot = firestore.collection("users")
+                        .document(userId)
+                        .collection("budgets")
+                        .whereEqualTo("categoryId", categoryId.toLong())
+                        .get()
+                        .await()
+                    
+                    budgetsSnapshot.documents.forEach { doc ->
+                        batch.delete(doc.reference)
+                    }
+                    Log.d("CategoryRepo", "Found ${budgetsSnapshot.documents.size} budgets to delete")
+                    
+                    // Commit the batch
+                    batch.commit().await()
+                    Log.d("CategoryRepo", "Category and related data deleted from Firestore: $fsId")
+                } catch (e: Exception) {
+                    Log.e("CategoryRepo", "Failed to delete category from Firestore", e)
+                    // Firestore SDK will queue the operation automatically when offline
+                    // The deletion will be synced when connection is restored
                 }
             }
         }

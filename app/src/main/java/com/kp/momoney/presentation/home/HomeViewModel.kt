@@ -57,14 +57,8 @@ class HomeViewModel @Inject constructor(
         // Sync data from Firestore when ViewModel is created
         viewModelScope.launch {
             try {
-                // CRITICAL: Sync categories FIRST before transactions
-                // Transactions have foreign key constraints to categories
-                // If we sync a transaction that points to a category that doesn't exist yet,
-                // the foreign key constraint will fail or show as unknown
-                categoryRepository.syncCategories()
-                
-                // Then sync transactions (which depend on categories)
-                transactionRepository.syncTransactions()
+                // Ensure categories are available before transactions to avoid FK issues
+                transactionRepository.syncUserData()
                 
                 // Process recurring transactions (create child transactions if due)
                 transactionRepository.processRecurringTransactions()

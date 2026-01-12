@@ -7,7 +7,7 @@ interface CategoryRepository {
     fun getAllCategories(): Flow<List<Category>>
     suspend fun getCategoryById(id: Int): Category?
     suspend fun addUserCategory(name: String, type: String, color: String)
-    suspend fun syncCategories()
+    suspend fun syncCategories(): Int
     suspend fun deleteCategory(categoryId: Int)
 }
 

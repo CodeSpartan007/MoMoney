@@ -15,7 +15,22 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TransactionDao {
     @Transaction
-    @Query("SELECT * FROM transactions ORDER BY date DESC")
+    @Query(
+        """
+        SELECT 
+            t.*,
+            c.id AS cat_id,
+            c.firestore_id AS cat_firestore_id,
+            c.user_id AS cat_user_id,
+            c.name AS cat_name,
+            c.type AS cat_type,
+            c.icon_name AS cat_icon_name,
+            c.color_hex AS cat_color_hex
+        FROM transactions t
+        LEFT JOIN categories c ON t.category_id = c.id
+        ORDER BY t.date DESC
+        """
+    )
     fun getAllTransactions(): Flow<List<TransactionWithCategory>>
     
     @Query("SELECT * FROM transactions WHERE id = :transactionId")

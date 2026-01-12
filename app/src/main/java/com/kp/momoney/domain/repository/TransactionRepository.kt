@@ -12,6 +12,7 @@ interface TransactionRepository {
     suspend fun updateTransaction(transaction: Transaction)
     suspend fun deleteTransaction(transaction: Transaction)
     fun getBudgetsWithSpending(): Flow<List<BudgetState>>
+    suspend fun syncUserData() // Sync categories then transactions sequentially
     suspend fun syncTransactions() // Sync transactions from Firestore to Room
     suspend fun getCategorySpendingForCategory(categoryId: Int, startDate: Long, endDate: Long): Double
     suspend fun processRecurringTransactions() // Process recurring transactions and create child transactions
