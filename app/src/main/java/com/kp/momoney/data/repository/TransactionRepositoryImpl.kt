@@ -274,7 +274,11 @@ class TransactionRepositoryImpl @Inject constructor(
                 data.entity.copy(categoryId = categoryId)
             }
             
-            // Insert/update transactions in Room using REPLACE strategy
+            var insertedCount = 0
+            var updatedCount = 0
+            var skippedCount = 0
+            
+            // Insert/update transactions in Room only when changes detected
             transactionsWithCategories.forEach { entity ->
                 // Check if transaction with this firestoreId already exists
                 val existing = entity.firestoreId?.let { 
@@ -282,20 +286,44 @@ class TransactionRepositoryImpl @Inject constructor(
                 }
                 
                 if (existing != null) {
-                    // Update existing transaction, preserving Room ID
-                    val updatedEntity = entity.copy(id = existing.id)
-                    transactionDao.upsertTransaction(updatedEntity)
+                    // Only update if there are actual changes
+                    if (hasTransactionChanged(existing, entity)) {
+                        val updatedEntity = entity.copy(id = existing.id)
+                        transactionDao.upsertTransaction(updatedEntity)
+                        updatedCount++
+                        Log.d("TransactionRepo", "Updated transaction: ${entity.firestoreId}")
+                    } else {
+                        skippedCount++
+                        Log.d("TransactionRepo", "Skipped unchanged transaction: ${entity.firestoreId}")
+                    }
                 } else {
                     // Insert new transaction
                     transactionDao.upsertTransaction(entity)
+                    insertedCount++
+                    Log.d("TransactionRepo", "Inserted new transaction: ${entity.firestoreId}")
                 }
             }
             
-            Log.d("TransactionRepo", "Successfully synced ${transactionsWithCategories.size} transactions to Room")
+            Log.d("TransactionRepo", "Sync complete - Inserted: $insertedCount, Updated: $updatedCount, Skipped: $skippedCount")
         } catch (e: Exception) {
             Log.e("TransactionRepo", "Failed to sync transactions from Firestore", e)
             throw e
         }
+    }
+    
+    /**
+     * Compares two TransactionEntity instances to detect if there are any changes.
+     * Returns true if the entities differ in any meaningful field.
+     */
+    private fun hasTransactionChanged(existing: TransactionEntity, incoming: TransactionEntity): Boolean {
+        return existing.amount != incoming.amount ||
+                existing.date != incoming.date ||
+                existing.note != incoming.note ||
+                existing.type != incoming.type ||
+                existing.categoryId != incoming.categoryId ||
+                existing.paymentMethod != incoming.paymentMethod ||
+                existing.tags != incoming.tags ||
+                existing.recurrence != incoming.recurrence
     }
 
     override fun getBudgetsWithSpending(): Flow<List<BudgetState>> {

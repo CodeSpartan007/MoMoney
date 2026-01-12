@@ -127,27 +127,38 @@ class CategoryRepositoryImpl @Inject constructor(
             
             Log.d("CategoryRepo", "Mapped ${firestoreCategories.size} categories from Firestore")
             
-            // Step 4: Insert/Update in Room
+            var insertedCount = 0
+            var updatedCount = 0
+            var skippedCount = 0
+            
+            // Step 4: Insert/Update in Room only when changes detected
             firestoreCategories.forEach { entity ->
                 // Check if category with this firestoreId already exists
                 val existing = categoryDao.getCategoryByFirestoreId(entity.firestoreId)
                 
                 if (existing != null) {
-                    // Update existing category, preserving Room ID and ensuring userId is correct
-                    val updatedEntity = entity.copy(
-                        id = existing.id,
-                        userId = userId // Ensure userId is set correctly
-                    )
-                    categoryDao.upsertCategory(updatedEntity)
-                    Log.d("CategoryRepo", "Updated category: ${entity.name} (firestoreId: ${entity.firestoreId})")
+                    // Only update if there are actual changes
+                    if (hasCategoryChanged(existing, entity)) {
+                        val updatedEntity = entity.copy(
+                            id = existing.id,
+                            userId = userId // Ensure userId is set correctly
+                        )
+                        categoryDao.upsertCategory(updatedEntity)
+                        updatedCount++
+                        Log.d("CategoryRepo", "Updated category: ${entity.name} (firestoreId: ${entity.firestoreId})")
+                    } else {
+                        skippedCount++
+                        Log.d("CategoryRepo", "Skipped unchanged category: ${entity.name} (firestoreId: ${entity.firestoreId})")
+                    }
                 } else {
                     // Insert new category
                     categoryDao.upsertCategory(entity)
+                    insertedCount++
                     Log.d("CategoryRepo", "Inserted new category: ${entity.name} (firestoreId: ${entity.firestoreId})")
                 }
             }
             
-            Log.d("CategoryRepo", "Successfully synced ${firestoreCategories.size} categories to Room")
+            Log.d("CategoryRepo", "Sync complete - Inserted: $insertedCount, Updated: $updatedCount, Skipped: $skippedCount")
             return firestoreCategories.size
         } catch (e: Exception) {
             Log.e("CategoryRepo", "Failed to sync categories from Firestore", e)
@@ -230,6 +241,18 @@ class CategoryRepositoryImpl @Inject constructor(
             color = colorHex,
             type = type
         )
+    }
+    
+    /**
+     * Compares two CategoryEntity instances to detect if there are any changes.
+     * Returns true if the entities differ in any meaningful field.
+     * Note: userId is not compared as it may differ during sync but shouldn't trigger updates.
+     */
+    private fun hasCategoryChanged(existing: CategoryEntity, incoming: CategoryEntity): Boolean {
+        return existing.name != incoming.name ||
+                existing.type != incoming.type ||
+                existing.colorHex != incoming.colorHex ||
+                existing.iconName != incoming.iconName
     }
 }
 
