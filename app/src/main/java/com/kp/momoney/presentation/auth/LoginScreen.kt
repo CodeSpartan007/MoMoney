@@ -194,15 +194,7 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = authState !is AuthState.Loading
                 ) {
-                    if (authState is AuthState.Loading) {
-                        CircularProgressIndicator(
-                                modifier = Modifier.height(18.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Login")
-                    }
+                    Text("Login")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
