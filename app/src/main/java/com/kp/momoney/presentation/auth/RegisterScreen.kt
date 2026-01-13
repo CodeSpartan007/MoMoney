@@ -3,6 +3,7 @@ package com.kp.momoney.presentation.auth
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -28,22 +28,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kp.momoney.R
+import com.kp.momoney.presentation.common.LoadingOverlay
+import com.kp.momoney.presentation.common.SuccessOverlay
 
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
-    onNavigateToLogin: () -> Unit,
-    viewModel: AuthViewModel = hiltViewModel()
+        onRegisterSuccess: () -> Unit,
+        onNavigateToLogin: () -> Unit,
+        viewModel: AuthViewModel = hiltViewModel()
 ) {
     val email by viewModel.email.collectAsState()
     val password by viewModel.password.collectAsState()
@@ -54,110 +58,118 @@ fun RegisterScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Local state to control success animation overlay
+    var showSuccessAnim by remember { mutableStateOf(false) }
+
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
-            onRegisterSuccess()
-            viewModel.resetState()
+            // Show success animation instead of immediately navigating
+            showSuccessAnim = true
         } else if (authState is AuthState.Error) {
             snackbarHostState.showSnackbar((authState as AuthState.Error).message)
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_logo_mini),
-                contentDescription = "App Logo",
-                modifier = Modifier
-                    .size(80.dp)
-                    .padding(bottom = 16.dp)
-            )
-            Text(
-                text = "Create account",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Text(
-                text = "Sign up to start tracking",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = viewModel::onEmailChanged,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Email") },
-                singleLine = true,
-                isError = emailError != null,
-                supportingText = {
-                    if (emailError != null) {
-                        Text(
-                            text = emailError!!,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = viewModel::onPasswordChanged,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Password") },
-                singleLine = true,
-                isError = passwordError != null,
-                supportingText = {
-                    if (passwordError != null) {
-                        Text(
-                            text = passwordError!!,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                },
-                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = viewModel::togglePasswordVisibility) {
-                        val icon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
-                        val description = if (isPasswordVisible) "Hide password" else "Show password"
-                        Icon(imageVector = icon, contentDescription = description)
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = viewModel::register,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is AuthState.Loading
+    Scaffold(snackbarHost = { SnackbarHost(hostState = snackbarHostState) }) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Register Form Content
+            Column(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues).padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Sign Up")
+                Image(
+                        painter = painterResource(id = R.drawable.ic_logo_mini),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.size(80.dp).padding(bottom = 16.dp)
+                )
+                Text(text = "Create account", style = MaterialTheme.typography.headlineMedium)
+                Text(
+                        text = "Sign up to start tracking",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                OutlinedTextField(
+                        value = email,
+                        onValueChange = viewModel::onEmailChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Email") },
+                        singleLine = true,
+                        isError = emailError != null,
+                        supportingText = {
+                            if (emailError != null) {
+                                Text(text = emailError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                        value = password,
+                        onValueChange = viewModel::onPasswordChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Password") },
+                        singleLine = true,
+                        isError = passwordError != null,
+                        supportingText = {
+                            if (passwordError != null) {
+                                Text(
+                                        text = passwordError!!,
+                                        color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        visualTransformation =
+                                if (isPasswordVisible) VisualTransformation.None
+                                else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = viewModel::togglePasswordVisibility) {
+                                val icon =
+                                        if (isPasswordVisible) Icons.Default.VisibilityOff
+                                        else Icons.Default.Visibility
+                                val description =
+                                        if (isPasswordVisible) "Hide password" else "Show password"
+                                Icon(imageVector = icon, contentDescription = description)
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                        onClick = viewModel::register,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = authState !is AuthState.Loading
+                ) { Text("Sign Up") }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                        text = "Already have an account? Login",
+                        modifier = Modifier.clickable(onClick = onNavigateToLogin),
+                        color = MaterialTheme.colorScheme.primary
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Success Animation Overlay
+            if (showSuccessAnim) {
+                SuccessOverlay(
+                        onAnimationFinished = {
+                            // Navigate to home after animation completes
+                            onRegisterSuccess()
+                            viewModel.resetState()
+                        }
+                )
+            }
 
-            Text(
-                text = "Already have an account? Login",
-                modifier = Modifier.clickable(onClick = onNavigateToLogin),
-                color = MaterialTheme.colorScheme.primary
-            )
+            // Loading Animation
+            LoadingOverlay(isLoading = authState is AuthState.Loading)
         }
     }
 }
-
-
